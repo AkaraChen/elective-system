@@ -3,7 +3,7 @@
 <% if (courses.length === 0) { %>
   <%- include('_components/empty-state', { title: '暂无课程', description: '管理员尚未添加任何课程' }) %>
 <% } else { %>
-  <div class="grid grid-cols-2 lg:grid-cols-3 gap-6">
+  <div class="course-masonry">
     <% courses.forEach(function(c) { %>
       <%- include('_course-card', { c: c }) %>
     <% }); %>

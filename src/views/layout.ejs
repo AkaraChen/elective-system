@@ -19,13 +19,13 @@
           <div class="hidden md:flex items-center space-x-1">
             <% if (user.isAdmin) { %>
               <a href="/admin/courses"
-                 class="px-3 py-2 rounded-md text-sm font-medium transition-colors <%= currentPath === '/admin/courses' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' %>">课程管理</a>
-              <a href="/admin/access"
-                 class="px-3 py-2 rounded-md text-sm font-medium transition-colors <%= currentPath === '/admin/access' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' %>">抢课批次</a>
-              <a href="/admin/users"
-                 class="px-3 py-2 rounded-md text-sm font-medium transition-colors <%= currentPath === '/admin/users' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' %>">用户管理</a>
+                 class="px-3 py-2 rounded-md text-sm font-medium transition-colors <%= currentPath === '/admin/courses' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' %>">课程</a>
               <a href="/admin/class"
-                 class="px-3 py-2 rounded-md text-sm font-medium transition-colors <%= currentPath === '/admin/class' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' %>">班级管理</a>
+                 class="px-3 py-2 rounded-md text-sm font-medium transition-colors <%= currentPath === '/admin/class' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' %>">班级</a>
+              <a href="/admin/access"
+                 class="px-3 py-2 rounded-md text-sm font-medium transition-colors <%= currentPath === '/admin/access' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' %>">批次</a>
+              <a href="/admin/users"
+                 class="px-3 py-2 rounded-md text-sm font-medium transition-colors <%= currentPath === '/admin/users' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' %>">用户</a>
             <% } else { %>
               <a href="/courses"
                  class="px-3 py-2 rounded-md text-sm font-medium transition-colors <%= currentPath === '/courses' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' %>">课程列表</a>
@@ -48,13 +48,13 @@
             <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 hidden peer-checked:block z-50">
               <% if (user.isAdmin) { %>
                 <a href="/admin/courses"
-                   class="block px-4 py-2 text-sm <%= currentPath === '/admin/courses' ? 'text-blue-700 bg-blue-50' : 'text-gray-700 hover:bg-gray-100' %>">课程管理</a>
-                <a href="/admin/access"
-                   class="block px-4 py-2 text-sm <%= currentPath === '/admin/access' ? 'text-blue-700 bg-blue-50' : 'text-gray-700 hover:bg-gray-100' %>">抢课批次</a>
-                <a href="/admin/users"
-                   class="block px-4 py-2 text-sm <%= currentPath === '/admin/users' ? 'text-blue-700 bg-blue-50' : 'text-gray-700 hover:bg-gray-100' %>">用户管理</a>
+                   class="block px-4 py-2 text-sm <%= currentPath === '/admin/courses' ? 'text-blue-700 bg-blue-50' : 'text-gray-700 hover:bg-gray-100' %>">课程</a>
                 <a href="/admin/class"
-                   class="block px-4 py-2 text-sm <%= currentPath === '/admin/class' ? 'text-blue-700 bg-blue-50' : 'text-gray-700 hover:bg-gray-100' %>">班级管理</a>
+                   class="block px-4 py-2 text-sm <%= currentPath === '/admin/class' ? 'text-blue-700 bg-blue-50' : 'text-gray-700 hover:bg-gray-100' %>">班级</a>
+                <a href="/admin/access"
+                   class="block px-4 py-2 text-sm <%= currentPath === '/admin/access' ? 'text-blue-700 bg-blue-50' : 'text-gray-700 hover:bg-gray-100' %>">批次</a>
+                <a href="/admin/users"
+                   class="block px-4 py-2 text-sm <%= currentPath === '/admin/users' ? 'text-blue-700 bg-blue-50' : 'text-gray-700 hover:bg-gray-100' %>">用户</a>
               <% } else { %>
                 <a href="/courses"
                    class="block px-4 py-2 text-sm <%= currentPath === '/courses' ? 'text-blue-700 bg-blue-50' : 'text-gray-700 hover:bg-gray-100' %>">课程列表</a>

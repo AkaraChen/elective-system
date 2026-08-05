@@ -36,7 +36,7 @@ router.get("/admin/access", requireAdmin, (_req: Request, res: Response) => {
   });
 
   res.render("admin-access", {
-    title: "抢课批次管理",
+    title: "优先批次管理",
     accessRows,
     allCourses,
     allStudents,

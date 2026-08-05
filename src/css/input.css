@@ -55,3 +55,13 @@
   display: block;
   animation: loading-bar 0.8s ease-in-out infinite;
 }
+
+.course-masonry {
+  columns: 2;
+  column-gap: 1.5rem;
+}
+
+.course-masonry > article {
+  break-inside: avoid;
+  margin-bottom: 1.5rem;
+}
