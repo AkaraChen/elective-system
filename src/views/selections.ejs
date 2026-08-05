@@ -34,7 +34,7 @@
           </div>
           <div class="flex justify-between md:block">
             <span class="text-xs text-gray-400 md:hidden">选课时间</span>
-            <span class="text-sm text-gray-500"><%= s.createdAt.substring(0, 16).replace("T", " ") %></span>
+            <span class="text-sm text-gray-500"><%= s.createdAt.substring(0, 10) %></span>
           </div>
           <div class="md:text-center pt-2 md:pt-0">
             <button hx-post="/api/courses/<%= s.courseId %>/drop"

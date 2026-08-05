@@ -6,11 +6,24 @@ import { requireAdmin } from "../middleware/auth";
 
 const router = Router();
 
+function getDefaultOpenTime(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const mar1This = new Date(year, 2, 1);
+  const sep1This = new Date(year, 8, 1);
+  const mar1 = mar1This > now ? mar1This : new Date(year + 1, 2, 1);
+  const sep1 = sep1This > now ? sep1This : new Date(year + 1, 8, 1);
+  const closer = mar1.getTime() - now.getTime() < sep1.getTime() - now.getTime() ? mar1 : sep1;
+  return closer.toISOString().substring(0, 16);
+}
+
 router.get("/admin/courses", requireAdmin, (_req: Request, res: Response) => {
   const endTimeRow = db.select({ value: config.value }).from(config).where(eq(config.key, "end_time")).get();
   const endTime = endTimeRow?.value || "";
   const siteTitleRow = db.select({ value: config.value }).from(config).where(eq(config.key, "site_title")).get();
   const siteTitle = siteTitleRow?.value || "选课系统";
+  const defaultOpenTime = getDefaultOpenTime();
+  const minEndDate = defaultOpenTime.substring(0, 10);
 
   const courseRows = db.all(
     sql`SELECT c.id, c.name, c.teacher, c.description,
@@ -24,7 +37,7 @@ router.get("/admin/courses", requireAdmin, (_req: Request, res: Response) => {
         ORDER BY c.id`
   ) as any[];
 
-  res.render("admin-courses", { title: "课程管理", courses: courseRows, endTime, siteTitle });
+  res.render("admin-courses", { title: "课程管理", courses: courseRows, endTime, siteTitle, defaultOpenTime, minEndDate });
 });
 
 router.post("/api/admin/courses", requireAdmin, (req: Request, res: Response) => {

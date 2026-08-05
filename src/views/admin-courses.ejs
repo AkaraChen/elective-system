@@ -3,8 +3,9 @@
 <form method="POST" action="/api/admin/config?_method=PUT" class="mb-6">
   <input type="hidden" name="key" value="end_time">
   <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-    <input type="datetime-local" name="value"
-      value="<%= typeof endTime === 'string' ? endTime.replace(/:\d{2}\.\d{3}Z$/, '').replace('T', ' ').substring(0,16).replace(' ', 'T') : endTime %>"
+    <input type="date" name="value"
+      value="<%= typeof endTime === 'string' ? endTime.substring(0, 10) : '' %>"
+      min="<%= minEndDate %>"
       required
       class="rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex-1" />
     <button type="submit" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors whitespace-nowrap">
@@ -40,7 +41,7 @@
       <%- include('_components/form-field', { label: '上课时间', name: 'courseTime' }) %>
       <%- include('_components/form-field', { label: '上课地点', name: 'location' }) %>
       <%- include('_components/form-field', { label: '总名额', name: 'totalSeats', type: 'number', value: '30', required: true }) %>
-      <%- include('_components/form-field', { label: '默认开放时间', name: 'openTime', type: 'datetime-local', required: true }) %>
+      <%- include('_components/form-field', { label: '默认开放时间', name: 'openTime', type: 'date', value: typeof defaultOpenTime === 'string' ? defaultOpenTime : '', required: true }) %>
     </div>
     <%- include('_components/form-field', { label: '课程描述', name: 'description' }) %>
     <button type="submit" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
@@ -87,7 +88,7 @@
           </div>
           <div class="flex justify-between md:block">
             <span class="text-xs text-gray-400 md:hidden">开放时间</span>
-            <span class="text-sm text-gray-600"><%= c.openTime ? c.openTime.substring(0, 16).replace("T", " ") : "-" %></span>
+            <span class="text-sm text-gray-600"><%= c.openTime ? c.openTime.substring(0, 10) : "-" %></span>
           </div>
           <div class="flex justify-between md:block">
             <span class="text-xs text-gray-400 md:hidden">已选/总</span>
@@ -124,7 +125,7 @@
               <%- include('_components/form-field', { label: '上课时间', name: 'courseTime', value: c.courseTime || '' }) %>
               <%- include('_components/form-field', { label: '上课地点', name: 'location', value: c.location || '' }) %>
               <%- include('_components/form-field', { label: '总名额', name: 'totalSeats', type: 'number', value: String(c.totalSeats), required: true }) %>
-              <%- include('_components/form-field', { label: '默认开放时间', name: 'openTime', type: 'datetime-local', value: c.openTime ? c.openTime.substring(0, 16) : '' }) %>
+              <%- include('_components/form-field', { label: '默认开放时间', name: 'openTime', type: 'date', value: c.openTime ? c.openTime.substring(0, 10) : '' }) %>
             </div>
             <%- include('_components/form-field', { label: '课程描述', name: 'description', value: c.description || '' }) %>
             <div class="flex items-center justify-between gap-2 pt-1">

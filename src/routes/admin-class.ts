@@ -1,0 +1,273 @@
+import { Router, Request, Response } from "express";
+import { eq, and, inArray } from "drizzle-orm";
+import { db } from "../db/index";
+import { courses, users, selections } from "../db/schema";
+import { requireAdmin } from "../middleware/auth";
+import { nowLocal } from "../utils/time";
+
+const router = Router();
+
+router.get("/admin/class", requireAdmin, (_req: Request, res: Response) => {
+  const allStudents = db
+    .select({ id: users.id, username: users.username })
+    .from(users)
+    .where(eq(users.isAdmin, 0))
+    .all();
+
+  const allCourses = db.select().from(courses).all();
+
+  res.render("admin-class", { title: "班级管理", allStudents, allCourses });
+});
+
+router.get("/api/admin/class/courses/search", requireAdmin, (req: Request, res: Response) => {
+  const { name } = req.query;
+  if (!name || typeof name !== "string" || !name.trim()) {
+    return res.send(`<div class="px-6 py-4 text-sm text-gray-500">请输入课程名</div>`);
+  }
+
+  const course = db
+    .select()
+    .from(courses)
+    .where(eq(courses.name, name.trim()))
+    .get();
+
+  if (!course) {
+    return res.send(
+      `<div class="px-6 py-4 text-sm text-red-500">未找到课程 "${name}"</div>`
+    );
+  }
+
+  const enrolledStudents = db
+    .select({ id: users.id, username: users.username })
+    .from(selections)
+    .innerJoin(users, eq(selections.userId, users.id))
+    .where(eq(selections.courseId, course.id))
+    .all();
+
+  res.send(renderResult(course, enrolledStudents));
+});
+
+router.put(
+  "/api/admin/class/courses/:id/students",
+  requireAdmin,
+  (req: Request, res: Response) => {
+    const courseId = parseInt(req.params.id as string);
+    if (isNaN(courseId) || courseId < 1) return res.status(400).send("无效的课程 ID");
+    const { user_ids } = req.body;
+
+    const course = db
+      .select()
+      .from(courses)
+      .where(eq(courses.id, courseId))
+      .get();
+    if (!course) return res.status(404).send("课程不存在");
+
+    const ids: number[] = Array.isArray(user_ids)
+      ? user_ids
+          .map((id: string) => parseInt(id))
+          .filter((id: number) => !isNaN(id))
+      : user_ids
+        ? [parseInt(user_ids)]
+        : [];
+
+    const uniqueIds = [...new Set(ids)];
+
+    const validIds = uniqueIds.length > 0
+      ? db.select({ id: users.id })
+          .from(users)
+          .where(and(eq(users.isAdmin, 0), inArray(users.id, uniqueIds)))
+          .all()
+          .map((u) => u.id)
+      : [];
+
+    if (validIds.length > course.totalSeats) {
+      return res
+        .status(400)
+        .send(
+          `名额不足，课程总名额 ${course.totalSeats}，当前提交 ${validIds.length} 人`
+        );
+    }
+
+    db.transaction(() => {
+      db.delete(selections).where(eq(selections.courseId, courseId)).run();
+
+      if (validIds.length > 0) {
+        const now = nowLocal();
+        db.insert(selections)
+          .values(
+            validIds.map((userId) => ({ userId, courseId, createdAt: now }))
+          )
+          .run();
+      }
+
+      db.update(courses)
+        .set({ availableSeats: course.totalSeats - validIds.length })
+        .where(eq(courses.id, courseId))
+        .run();
+    });
+
+    const updatedCourse = db
+      .select()
+      .from(courses)
+      .where(eq(courses.id, courseId))
+      .get()!;
+
+    const enrolledStudents = db
+      .select({ id: users.id, username: users.username })
+      .from(selections)
+      .innerJoin(users, eq(selections.userId, users.id))
+      .where(eq(selections.courseId, courseId))
+      .all();
+
+    res.send(renderResult(updatedCourse, enrolledStudents));
+  }
+);
+
+function renderBadgesReadOnly(
+  students: { id: number; username: string }[]
+): string {
+  if (students.length === 0) {
+    return '<p class="text-sm text-gray-400">暂无学生选课</p>';
+  }
+  let html = '<div class="flex flex-wrap gap-1.5">';
+  students.forEach((s) => {
+    html +=
+      '<span class="inline-flex items-center rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs font-medium text-blue-700">' +
+      s.username +
+      "</span>";
+  });
+  html += "</div>";
+  return html;
+}
+
+function renderResult(
+  course: any,
+  enrolled: { id: number; username: string }[]
+): string {
+  const selected = enrolled.length;
+  const total = course.totalSeats;
+  const availableRatio = total > 0 ? (total - selected) / total : 0;
+  const barC =
+    availableRatio > 0.5
+      ? "bg-green-500"
+      : availableRatio > 0.2
+        ? "bg-yellow-500"
+        : "bg-red-500";
+  const txtC =
+    availableRatio > 0.5
+      ? "text-green-700"
+      : availableRatio > 0.2
+        ? "text-yellow-700"
+        : "text-red-700";
+
+  let h = "";
+  h += '<div id="class-result-' + course.id + '" class="px-6 py-4">';
+
+  h += '<div class="flex items-start justify-between mb-3">';
+  h += "<div>";
+  h +=
+    '<h3 class="text-lg font-semibold text-gray-900">' + course.name + "</h3>";
+  h +=
+    '<p class="text-sm text-gray-500 mt-0.5">' +
+    (course.teacher || "") +
+    " &middot; " +
+    (course.courseTime || "") +
+    " &middot; " +
+    (course.location || "") +
+    "</p>";
+  h += "</div>";
+  h +=
+    '<span class="text-sm font-medium ' +
+    txtC +
+    '">' +
+    selected +
+    " / " +
+    total +
+    "</span>";
+  h += "</div>";
+
+  h += '<div class="w-full bg-gray-100 rounded-full h-2 mb-4">';
+  h +=
+    '<div class="' +
+    barC +
+    ' h-2 rounded-full transition-all" style="width: ' +
+    (total > 0 ? (selected / total) * 100 : 0) +
+    '%"></div>';
+  h += "</div>";
+
+  h += '<div class="flex items-center justify-between mb-2">';
+  h +=
+    '<span class="text-xs font-medium text-gray-500 uppercase tracking-wider">已选学生 &middot; ' +
+    selected +
+    " 人</span>";
+  h +=
+    '<button onclick="document.getElementById(\'edit-class-' +
+    course.id +
+    '\').classList.toggle(\'hidden\')" class="text-xs font-medium rounded-lg px-2.5 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">编辑</button>';
+  h += "</div>";
+
+  h += '<div id="badges-readonly-' + course.id + '" class="mb-3">';
+  h += renderBadgesReadOnly(enrolled);
+  h += "</div>";
+
+  h += '<div id="edit-class-' + course.id + '" class="hidden border-t border-dashed border-gray-200 pt-4 pb-1">';
+  h +=
+    '<form method="POST" action="/api/admin/class/courses/' +
+    course.id +
+    '/students?_method=PUT" class="edit-form">';
+
+  h +=
+    '<label class="block text-sm font-medium text-gray-700 mb-1.5">当前班级学生</label>';
+  h +=
+    '<div id="edit-badges-' +
+    course.id +
+    '" class="student-badges flex flex-wrap gap-1.5 mb-3 min-h-[2rem]' +
+    (enrolled.length === 0 ? " items-center" : "") +
+    '" data-course-id="' +
+    course.id +
+    '">';
+  if (enrolled.length === 0) {
+    h += '<span class="text-xs text-gray-400">暂无学生</span>';
+  } else {
+    enrolled.forEach((s) => {
+      h +=
+        '<span class="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs font-medium text-blue-700" data-user-id="' +
+        s.id +
+        '">' +
+        s.username +
+        '<button type="button" onclick="removeStudentBadge(this)" class="text-blue-400 hover:text-red-500 hover:bg-red-50 transition-colors mx-0.5" title="移除">&times;</button></span>';
+    });
+  }
+  h += "</div>";
+
+  h +=
+    '<textarea class="edit-student-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y mb-2" rows="2" placeholder="粘贴学生用户名，可用空格、逗号、换行分隔"></textarea>';
+  h +=
+    '<button type="button" onclick="addStudentsToEdit(this)" class="inline-flex items-center justify-center text-xs font-medium rounded-lg px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors mb-3">批量添加</button>';
+  h +=
+    '<div class="edit-unmatched text-xs text-red-500 mb-3 hidden"></div>';
+
+  h += '<div class="hidden-inputs-container">';
+  enrolled.forEach((s) => {
+    h +=
+      '<input type="hidden" name="user_ids" value="' + s.id + '" />';
+  });
+  h += "</div>";
+
+  h += '<div class="flex items-center gap-2">';
+  h +=
+    '<button type="submit" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors">保存</button>';
+  h +=
+    '<button type="button" onclick="document.getElementById(\'edit-class-' +
+    course.id +
+    '\').classList.add(\'hidden\')" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">取消</button>';
+  h += "</div>";
+
+  h += "</form>";
+  h += "</div>";
+
+  h += "</div>";
+  return h;
+}
+
+export default router;
