@@ -3,6 +3,7 @@
 <details class="mb-6 bg-white rounded-xl shadow-sm border border-gray-100">
   <summary class="px-6 py-3 cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 select-none">+ 新建优先批次</summary>
   <form method="POST" action="/api/admin/access" class="px-6 pb-4">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <%- include('_components/form-field', { label: '课程', name: 'course_id', type: 'select', required: true, options: '<option value="">-- 选择课程 --</option>' + allCourses.map(function(c){ return '<option value="' + c.id + '">' + c.name + '</option>'; }).join('') }) %>
       <%- include('_components/form-field', { label: '开放时间', name: 'open_time', type: 'date', required: true }) %>
@@ -67,6 +68,7 @@
           <% var existing = accessStudents && accessStudents[a.id] ? accessStudents[a.id] : []; %>
           <div id="edit-access-<%= a.id %>" class="hidden border-t border-dashed border-gray-200 px-6 py-4 bg-gray-50/50">
             <form method="POST" action="/api/admin/access/<%= a.id %>?_method=PUT">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <%- include('_components/form-field', { label: '开放时间', name: 'open_time', type: 'date', value: a.open_time ? a.open_time.substring(0, 10) : '' }) %>
 
               <label class="block text-sm font-medium text-gray-700 mb-1.5">当前批次学生</label>

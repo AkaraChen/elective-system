@@ -4,6 +4,7 @@ import { db } from "../db/index";
 import { courses, users, selections } from "../db/schema";
 import { requireAdmin } from "../middleware/auth";
 import { nowLocal } from "../utils/time";
+import { parseRouteId } from "../utils/parse-id";
 
 const router = Router();
 
@@ -33,7 +34,7 @@ router.get("/api/admin/class/courses/search", requireAdmin, (req: Request, res: 
 
   if (!course) {
     return res.send(
-      `<div class="px-6 py-4 text-sm text-red-500">未找到课程 "${name}"</div>`
+      `<div class="px-6 py-4 text-sm text-red-500">未找到课程 "${escapeHtml(name.trim())}"</div>`
     );
   }
 
@@ -44,15 +45,15 @@ router.get("/api/admin/class/courses/search", requireAdmin, (req: Request, res: 
     .where(eq(selections.courseId, course.id))
     .all();
 
-  res.send(renderResult(course, enrolledStudents));
+  res.send(renderResult(course, enrolledStudents, res.locals.csrfToken));
 });
 
 router.put(
   "/api/admin/class/courses/:id/students",
   requireAdmin,
   (req: Request, res: Response) => {
-    const courseId = parseInt(req.params.id as string);
-    if (isNaN(courseId) || courseId < 1) return res.status(400).send("无效的课程 ID");
+    const courseId = parseRouteId(req.params.id);
+    if (courseId === null) return res.status(400).send("无效的课程ID");
     const { user_ids } = req.body;
 
     const course = db
@@ -80,6 +81,8 @@ router.put(
           .map((u) => u.id)
       : [];
 
+    const invalidIds = uniqueIds.filter(id => !validIds.includes(id));
+
     if (validIds.length > course.totalSeats) {
       return res
         .status(400)
@@ -88,23 +91,29 @@ router.put(
         );
     }
 
-    db.transaction(() => {
-      db.delete(selections).where(eq(selections.courseId, courseId)).run();
+    db.transaction((tx) => {
+      tx.delete(selections).where(eq(selections.courseId, courseId)).run();
 
       if (validIds.length > 0) {
         const now = nowLocal();
-        db.insert(selections)
+        tx.insert(selections)
           .values(
             validIds.map((userId) => ({ userId, courseId, createdAt: now }))
           )
           .run();
       }
 
-      db.update(courses)
+      tx.update(courses)
         .set({ availableSeats: course.totalSeats - validIds.length })
         .where(eq(courses.id, courseId))
         .run();
     });
+
+    if (invalidIds.length > 0) {
+      res.set("HX-Trigger", JSON.stringify({
+        toast: { message: `以下ID不存在，已忽略：${invalidIds.join("、")}`, type: "warning" }
+      }));
+    }
 
     const updatedCourse = db
       .select()
@@ -119,9 +128,18 @@ router.put(
       .where(eq(selections.courseId, courseId))
       .all();
 
-    res.send(renderResult(updatedCourse, enrolledStudents));
+    res.send(renderResult(updatedCourse, enrolledStudents, req.session.csrfToken!));
   }
 );
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
 function renderBadgesReadOnly(
   students: { id: number; username: string }[]
@@ -133,7 +151,7 @@ function renderBadgesReadOnly(
   students.forEach((s) => {
     html +=
       '<span class="inline-flex items-center rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs font-medium text-blue-700">' +
-      s.username +
+      escapeHtml(s.username) +
       "</span>";
   });
   html += "</div>";
@@ -142,7 +160,8 @@ function renderBadgesReadOnly(
 
 function renderResult(
   course: any,
-  enrolled: { id: number; username: string }[]
+  enrolled: { id: number; username: string }[],
+  csrfToken: string
 ): string {
   const selected = enrolled.length;
   const total = course.totalSeats;
@@ -166,14 +185,14 @@ function renderResult(
   h += '<div class="flex items-start justify-between mb-3">';
   h += "<div>";
   h +=
-    '<h3 class="text-lg font-semibold text-gray-900">' + course.name + "</h3>";
+    '<h3 class="text-lg font-semibold text-gray-900">' + escapeHtml(course.name) + "</h3>";
   h +=
     '<p class="text-sm text-gray-500 mt-0.5">' +
-    (course.teacher || "") +
+    escapeHtml(course.teacher || "") +
     " &middot; " +
-    (course.courseTime || "") +
+    escapeHtml(course.courseTime || "") +
     " &middot; " +
-    (course.location || "") +
+    escapeHtml(course.location || "") +
     "</p>";
   h += "</div>";
   h +=
@@ -216,6 +235,8 @@ function renderResult(
     course.id +
     '/students?_method=PUT" class="edit-form">';
 
+  h += '<input type="hidden" name="_csrf" value="' + escapeHtml(csrfToken) + '" />';
+
   h +=
     '<label class="block text-sm font-medium text-gray-700 mb-1.5">当前班级学生</label>';
   h +=
@@ -234,7 +255,7 @@ function renderResult(
         '<span class="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs font-medium text-blue-700" data-user-id="' +
         s.id +
         '">' +
-        s.username +
+        escapeHtml(s.username) +
         '<button type="button" onclick="removeStudentBadge(this)" class="text-blue-400 hover:text-red-500 hover:bg-red-50 transition-colors mx-0.5" title="移除">&times;</button></span>';
     });
   }

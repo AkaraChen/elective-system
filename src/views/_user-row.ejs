@@ -24,6 +24,7 @@
 
   <div id="edit-user-<%= u.id %>" class="hidden border-t border-dashed border-gray-200 px-6 py-4 bg-gray-50/50">
     <form method="POST" action="/api/admin/users/<%= u.id %>?_method=PUT">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <%- include('_components/form-field', { label: '用户名', name: 'username', value: u.username }) %>
         <%- include('_components/form-field', { label: '新密码（留空不修改）', name: 'password', type: 'password', placeholder: '留空不修改' }) %>

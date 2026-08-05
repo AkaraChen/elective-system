@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= typeof title !== "undefined" ? title : (typeof siteTitle !== "undefined" ? siteTitle : "选课系统") %></title>
   <link rel="stylesheet" href="/style.css">
+  <meta name="csrf-token" content="<%= csrfToken %>">
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
 </head>
 <body class="h-full">
@@ -33,6 +34,7 @@
                  class="px-3 py-2 rounded-md text-sm font-medium transition-colors <%= currentPath === '/selections' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' %>">我的选课</a>
             <% } %>
             <form action="/api/logout" method="POST" class="ml-2">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <button type="submit"
                       class="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors">退出</button>
             </form>
@@ -63,6 +65,7 @@
               <% } %>
               <hr class="my-1 border-gray-100" />
               <form action="/api/logout" method="POST">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-gray-500 hover:bg-gray-100">退出</button>
               </form>
             </div>
@@ -109,6 +112,11 @@
         setTimeout(function() { toast.remove(); }, 300);
       }, 3500);
     };
+
+    document.body.addEventListener('htmx:configRequest', function(evt) {
+      var token = document.querySelector('meta[name="csrf-token"]');
+      if (token) evt.detail.headers['x-csrf-token'] = token.content;
+    });
 
     document.body.addEventListener('htmx:beforeRequest', function() {
       document.body.classList.add('htmx-request');

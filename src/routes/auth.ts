@@ -19,11 +19,15 @@ router.post("/api/login", (req: Request, res: Response) => {
     return res.render("login", { error: "用户名或密码错误", title: "登录" });
   }
 
-  req.session.userId = user.id;
-  req.session.isAdmin = user.isAdmin;
-
-  const redirectTo = user.isAdmin ? "/admin/courses" : "/courses";
-  res.redirect(redirectTo);
+  req.session.regenerate((err) => {
+    if (err) return res.status(500).send("登录失败");
+    req.session.userId = user.id;
+    req.session.isAdmin = user.isAdmin;
+    req.session.save(() => {
+      const redirectTo = user.isAdmin ? "/admin/courses" : "/courses";
+      res.redirect(redirectTo);
+    });
+  });
 });
 
 router.post("/api/logout", (req: Request, res: Response) => {

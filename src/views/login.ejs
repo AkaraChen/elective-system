@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= typeof siteTitle !== "undefined" ? siteTitle : "选课系统" %> - 登录</title>
   <link rel="stylesheet" href="/style.css">
-</head>
+  <meta name="csrf-token" content="<%= csrfToken %>"> </head>
 <body class="h-full">
   <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-100 px-4">
     <div class="w-full max-w-md">
@@ -22,7 +22,7 @@
         <% } %>
 
         <form method="POST" action="/api/login">
-          <%- include('_components/form-field', {
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">           <%- include('_components/form-field', {
             label: '用户名',
             name: 'username',
             type: 'text',

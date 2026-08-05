@@ -1,7 +1,8 @@
 <h2 class="text-2xl font-bold text-gray-900 mb-6">全局截止时间</h2>
 
 <form method="POST" action="/api/admin/config?_method=PUT" class="mb-6">
-  <input type="hidden" name="key" value="end_time">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <input type="hidden" name="key" value="end_time"> 
   <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
     <input type="date" name="value"
       value="<%= typeof endTime === 'string' ? endTime.substring(0, 10) : '' %>"
@@ -19,6 +20,7 @@
 <h2 class="text-2xl font-bold text-gray-900 mb-6">最大报课数</h2>
 
 <form method="POST" action="/api/admin/config?_method=PUT" class="mb-6">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
   <input type="hidden" name="key" value="max_selections">
   <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
     <input type="number" name="value"
@@ -36,6 +38,7 @@
 <h2 class="text-2xl font-bold text-gray-900 mb-6">显示标题</h2>
 
 <form method="POST" action="/api/admin/config?_method=PUT" class="mb-6">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
   <input type="hidden" name="key" value="site_title">
   <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
     <input type="text" name="value"
@@ -54,6 +57,7 @@
 <details class="mb-6 bg-white rounded-xl shadow-sm border border-gray-100">
   <summary class="px-6 py-3 cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 select-none">+ 新建课程</summary>
   <form method="POST" action="/api/admin/courses" class="px-6 pb-4">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <%- include('_components/form-field', { label: '课程名', name: 'name', required: true }) %>
       <%- include('_components/form-field', { label: '教师', name: 'teacher', required: true }) %>
@@ -138,6 +142,7 @@
 
         <div id="edit-<%= c.id %>" class="hidden border-t border-dashed border-gray-200 px-6 py-4 bg-gray-50/50">
           <form method="POST" action="/api/admin/courses/<%= c.id %>?_method=PUT">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <%- include('_components/form-field', { label: '课程名', name: 'name', value: c.name, required: true }) %>
               <%- include('_components/form-field', { label: '教师', name: 'teacher', value: c.teacher, required: true }) %>

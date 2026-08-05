@@ -1,14 +1,15 @@
 import { Router, Request, Response } from "express";
-import { eq, and } from "drizzle-orm";
-import { db, rawDb } from "../db/index";
+import { eq, and, count } from "drizzle-orm";
+import { db } from "../db/index";
 import { courses, access, accessUsers, selections, config } from "../db/schema";
 import { requireAuth } from "../middleware/auth";
 import { nowLocal } from "../utils/time";
+import { parseRouteId } from "../utils/parse-id";
 
 const router = Router();
 
-function getOpenTimeForUser(userId: number, courseId: number): string {
-  const record = db
+function getOpenTimeForUser(client: any, userId: number, courseId: number): string {
+  const record = client
     .select({ openTime: access.openTime })
     .from(access)
     .innerJoin(accessUsers, eq(access.id, accessUsers.accessId))
@@ -17,8 +18,16 @@ function getOpenTimeForUser(userId: number, courseId: number): string {
 
   if (record) return record.openTime;
 
-  const course = db.select({ openTime: courses.openTime }).from(courses).where(eq(courses.id, courseId)).get();
+  const course = client.select({ openTime: courses.openTime }).from(courses).where(eq(courses.id, courseId)).get();
   return course!.openTime;
+}
+
+const DEFAULT_MAX_SELECTIONS = 3;
+
+function getMaxSelections(): number {
+  const row = db.select({ value: config.value }).from(config).where(eq(config.key, "max_selections")).get();
+  const v = parseInt(row?.value || "");
+  return (!isNaN(v) && v > 0) ? v : DEFAULT_MAX_SELECTIONS;
 }
 
 router.get("/courses", requireAuth, (req: Request, res: Response) => {
@@ -40,7 +49,7 @@ router.get("/courses", requireAuth, (req: Request, res: Response) => {
   const selectedIds = new Set(selectedRows.map((r) => r.courseId));
 
   const courseList = allCourses.map((c) => {
-    const opentime = getOpenTimeForUser(userId, c.id);
+    const opentime = getOpenTimeForUser(db, userId, c.id);
     const isSelected = selectedIds.has(c.id);
 
     let state = "open";
@@ -60,19 +69,35 @@ router.get("/courses", requireAuth, (req: Request, res: Response) => {
   res.render("courses", { courses: courseList, now, endTime });
 });
 
+function isInternalError(msg: string): boolean {
+  return /SQLITE|stack|undefined|null|cannot|syntax|ReferenceError|TypeError/i.test(msg);
+}
+
 router.post("/api/courses/:id/select", requireAuth, (req: Request, res: Response) => {
   if (req.session.isAdmin) return res.status(403).send("管理员不能选课");
 
   const userId = req.session.userId!;
-  const courseId = Number(req.params.id);
+  const courseId = parseRouteId(req.params.id);
+  if (courseId === null) return res.status(400).send("无效的课程ID");
   const now = nowLocal();
+
+  const maxSelections = getMaxSelections();
 
   try {
     db.transaction((tx) => {
       const course = tx.select().from(courses).where(eq(courses.id, courseId)).get();
       if (!course) throw new Error("课程不存在");
 
-      const opentime = getOpenTimeForUser(userId, courseId);
+      const currentCount = tx
+        .select({ count: count() })
+        .from(selections)
+        .where(eq(selections.userId, userId))
+        .get();
+      if (currentCount && currentCount.count >= maxSelections) {
+        throw new Error(`最多只能选 ${maxSelections} 门课`);
+      }
+
+      const opentime = getOpenTimeForUser(tx, userId, courseId);
 
       const endTimeRow = tx.select({ value: config.value }).from(config).where(eq(config.key, "end_time")).get();
       const endTime = endTimeRow?.value;
@@ -99,7 +124,7 @@ router.post("/api/courses/:id/select", requireAuth, (req: Request, res: Response
     });
 
     const course = db.select().from(courses).where(eq(courses.id, courseId)).get()!;
-    const opentime = getOpenTimeForUser(userId, courseId);
+    const opentime = getOpenTimeForUser(db, userId, courseId);
 
     const endTimeRow2 = db.select({ value: config.value }).from(config).where(eq(config.key, "end_time")).get();
     const endTimeStr = endTimeRow2?.value || "";
@@ -113,7 +138,8 @@ router.post("/api/courses/:id/select", requireAuth, (req: Request, res: Response
 
     res.render("_course-card", { c, layout: false });
   } catch (e: any) {
-    res.status(400).send(e.message);
+    const msg = e.message || "";
+    res.status(400).send(isInternalError(msg) ? "操作失败，请稍后重试" : msg);
   }
 });
 
@@ -121,11 +147,16 @@ router.post("/api/courses/:id/drop", requireAuth, (req: Request, res: Response) 
   if (req.session.isAdmin) return res.status(403).send("管理员不能退课");
 
   const userId = req.session.userId!;
-  const courseId = Number(req.params.id);
+  const courseId = parseRouteId(req.params.id);
+  if (courseId === null) return res.status(400).send("无效的课程ID");
   const now = nowLocal();
 
   try {
     db.transaction((tx) => {
+      const endTimeRow = tx.select({ value: config.value }).from(config).where(eq(config.key, "end_time")).get();
+      const endTime = endTimeRow?.value;
+      if (endTime && now >= endTime) throw new Error("选课已截止，无法退课");
+
       const sel = tx
         .select()
         .from(selections)
@@ -145,14 +176,9 @@ router.post("/api/courses/:id/drop", requireAuth, (req: Request, res: Response) 
     });
 
     const course = db.select().from(courses).where(eq(courses.id, courseId)).get()!;
-    const opentime = getOpenTimeForUser(userId, courseId);
+    const opentime = getOpenTimeForUser(db, userId, courseId);
     const endTimeRow = db.select({ value: config.value }).from(config).where(eq(config.key, "end_time")).get();
     const endTime = endTimeRow?.value || "";
-    const sel = db
-      .select()
-      .from(selections)
-      .where(and(eq(selections.userId, userId), eq(selections.courseId, courseId)))
-      .get();
 
     let state = "open";
     if (now >= endTime) {
@@ -167,7 +193,8 @@ router.post("/api/courses/:id/drop", requireAuth, (req: Request, res: Response) 
 
     res.render("_course-card", { c, layout: false });
   } catch (e: any) {
-    res.status(400).send(e.message);
+    const msg = e.message || "";
+    res.status(400).send(isInternalError(msg) ? "操作失败，请稍后重试" : msg);
   }
 });
 

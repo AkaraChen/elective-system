@@ -6,22 +6,48 @@
 
 ### #1 事务回调使用了全局 db 而非事务实例 tx
 
-**影响范围：** `src/routes/courses.ts:71-99`、`src/routes/courses.ts:128-145`、`src/routes/admin-class.ts:91-107`
+**当前状态：** `courses.ts` 的选课/退课事务已正确使用 `tx`，但存在以下遗留问题：
 
-**修复方案：** 将所有 `db.transaction()` 回调内部 `db.xxx()` 替换为 `tx.xxx()`。
+**影响范围：** `src/routes/admin-class.ts:91-107`、`src/routes/courses.ts:13-26`（`getOpenTimeForUser` 函数）
 
-`src/routes/courses.ts` 选课接口：
+**修复方案：**
+
+**A. `admin-class.ts` 批量导入事务 ——** 回调内 `db.xxx()` 全部替换为 `tx.xxx()`：
+
 ```ts
+admin-class.ts 批量导入改前：
+db.transaction(() => {
+  db.delete(selections).where(eq(selections.courseId, courseId)).run();
+  db.insert(selections).values(...).run();
+  db.update(courses).set(...).where(eq(courses.id, courseId)).run();
+});
+
+改后：
 db.transaction((tx) => {
-  const course = tx.select().from(courses).where(eq(courses.id, courseId)).get();
-  // ... 所有查询/更新都用 tx 而非 db
-  const endTimeRow = tx.select({ value: config.value }).from(config).where(eq(config.key, "end_time")).get();
-  tx.update(courses).set({ availableSeats: course.availableSeats - 1 }).where(eq(courses.id, courseId)).run();
-  tx.insert(selections).values({ userId, courseId, createdAt: now }).run();
+  tx.delete(selections).where(eq(selections.courseId, courseId)).run();
+  tx.insert(selections).values(...).run();
+  tx.update(courses).set(...).where(eq(courses.id, courseId)).run();
 });
 ```
 
-退课接口同理，`admin-class.ts` 批量导入同理。
+**B. `getOpenTimeForUser()` 在事务内读取全局 db ——** 该函数被 `courses.ts` 选课事务内部调用，但内部使用 `db`（全局连接）而非事务传入的 `tx`。修复方式：将该函数改为接受 `db`/`tx` 实例作为参数：
+
+```ts
+// 改前
+function getOpenTimeForUser(userId: number, courseId: number): string {
+  const record = db.select(...).from(access)...;
+  ...
+}
+
+// 改后
+function getOpenTimeForUser(client: typeof db, userId: number, courseId: number): string {
+  const record = client.select(...).from(access)...;
+  ...
+}
+
+// 事务内调用：getOpenTimeForUser(tx, userId, courseId)
+// 事务外调用：getOpenTimeForUser(db, userId, courseId)
+```
 
 ---
 
@@ -114,7 +140,7 @@ db.transaction((tx) => {
 
 `MAX_SELECTIONS` 可先硬编码（如 3），后期改为从 config 表读取。
 
-**额外需要：** config 表中新增一条 `max_selections` 配置项，在 `src/routes/admin-courses.ts` 的配置编辑页面中增加此项。
+**当前进展：** config 表中已有 `max_selections` 配置项，`admin-courses.ts` 页面也已渲染该字段。仅缺选课接口中的实际强制校验，以及 fallback 默认值（config 中未配置时兜底为如 3）。
 
 ---
 
@@ -318,34 +344,7 @@ router.put("/api/admin/config", requireAdmin, (req, res) => {
 
 ---
 
-### #12 创建用户密码无强度要求
 
-**影响范围：** `src/routes/admin-users.ts:37-53`
-
-**修复方案：**
-
-```ts
-router.post("/api/admin/users", requireAdmin, (req, res) => {
-  let { username, password } = req.body;
-  const isAdmin = req.body.isAdmin === "1" ? 1 : 0;
-
-  username = (username || "").trim();
-  const errors: string[] = [];
-
-  if (!username) errors.push("用户名不能为空");
-  if (username.length < 3 || username.length > 50) errors.push("用户名长度3-50位");
-  if (!/^[a-zA-Z0-9_]+$/.test(username)) errors.push("用户名只能包含字母、数字和下划线");
-  if (!password || password.length < 6) errors.push("密码至少6位");
-
-  if (errors.length > 0) {
-    return res.status(400).send(errors.join("；"));
-  }
-
-  // ... 插入逻辑
-});
-```
-
----
 
 ### #13 创建特殊开放时间不校验外部实体
 
@@ -418,21 +417,24 @@ if (invalidIds.length > 0) {
 
 ---
 
-### #16 错误信息泄露业务逻辑
+### #16 错误信息可能暴露内部细节
 
 **影响范围：** `src/routes/courses.ts`
 
-**修复方案：**
+> ⚠ 可选修复。对于校内选课系统，"尚未到开放时间" / "选课已截止" 等描述性错误对学生的可用性至关重要，信息泄露风险在该场景下微乎其微。建议仅对内部错误（如 SQL 报错、表名、堆栈）做泛化，保留业务逻辑层面的友好提示。
 
-将具体错误信息改为通用提示：
+**修复方案（按需）：**
+
+仅将 catch 块中的 `e.message` 对内部错误做过滤：
 
 ```ts
-if (now < opentime) throw new Error("选课失败");       // 原："尚未到开放时间"
-if (endTime && now >= endTime) throw new Error("选课失败"); // 原："选课已截止"
-if (course.availableSeats <= 0) throw new Error("名额已满");
+} catch (e: any) {
+  // 仅对 SQL / 运行时内部错误做泛化
+  const msg = e.message || "";
+  const isInternal = msg.includes("SQLITE") || msg.includes("stack") || msg.includes("undefined");
+  res.status(400).send(isInternal ? "操作失败，请稍后重试" : msg);
+}
 ```
-
-同时建议在后端日志中记录详细原因，但只向客户端返回通用错误。
 
 ---
 
@@ -506,171 +508,7 @@ if (username) {
 
 ---
 
-## P3 - 有余力修复（安全增强 / 性能优化）
 
-### #15 课程时间重叠检查
-
-**影响范围：** `src/routes/courses.ts`
-
-**修复方案：**
-
-选课时检查同一学生已选课程是否与当前课程时间重叠。由于 `courseTime` 目前是自由文本字段，建议先规范化时间格式（如 `"周一 08:00-10:00"` 改为结构化字段），或暂时只做字符串比较提示。
-
----
-
-### #18 全量加载无分页
-
-**修复方案：**
-
-所有列表接口增加 `page` 和 `limit` 查询参数（默认值 `page=1, limit=50`）：
-
-```ts
-const page = Math.max(1, parseInt(req.query.page as string) || 1);
-const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
-const offset = (page - 1) * limit;
-
-const courses = db.select().from(courses).limit(limit).offset(offset).all();
-const total = db.select({ count: count() }).from(courses).get()?.count ?? 0;
-const totalPages = Math.ceil(total / limit);
-```
-
-前端配合 HTMX 的分页触发或滚动加载。
-
----
-
-### #20 无请求体大小限制
-
-**修复方案：**
-
-在 `src/index.ts` 中配置：
-
-```ts
-app.use(express.json({ limit: "1mb" }));
-app.use(express.urlencoded({ extended: true, limit: "1mb" }));
-```
-
----
-
-### #21 无安全头
-
-**修复方案：**
-
-安装 helmet：
-
-```bash
-npm install helmet
-```
-
-在 `src/index.ts` 中：
-
-```ts
-import helmet from "helmet";
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"], // HTMX 需要
-      styleSrc: ["'self'", "'unsafe-inline'"],
-    },
-  },
-}));
-```
-
----
-
-### #22 无审计日志
-
-**修复方案：**
-
-增加一个 `audit_log` 表：
-
-```ts
-// src/db/schema.ts
-export const auditLog = sqliteTable("audit_log", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  userId: integer("user_id").notNull(),
-  action: text("action").notNull(),       // 如 "delete_course", "create_user"
-  targetId: integer("target_id"),
-  detail: text("detail"),                 // JSON 格式的变更详情
-  createdAt: text("created_at").notNull(),
-});
-```
-
-在所有 admin 操作的 API 中增加日志写入：
-
-```ts
-db.insert(auditLog).values({
-  userId: req.session.userId,
-  action: "delete_course",
-  targetId: courseId,
-  detail: JSON.stringify({ courseName: course.name }),
-  createdAt: nowLocal(),
-}).run();
-```
-
----
-
-### #24 无频率限制（暴力破解防护）
-
-**修复方案：**
-
-安装 express-rate-limit：
-
-```bash
-npm install express-rate-limit
-```
-
-在 `src/index.ts` 中：
-
-```ts
-import rateLimit from "express-rate-limit";
-
-// 全局限制
-app.use(rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 300,
-  standardHeaders: true,
-  legacyHeaders: false,
-}));
-
-// 登录接口更严格限制
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: "登录尝试次数过多，请15分钟后再试",
-});
-app.use("/api/login", loginLimiter);
-```
-
----
-
-### #25 搜索仅支持精确匹配
-
-**修复方案：**
-
-将精确匹配 `eq` 改为模糊匹配 `like`：
-
-```ts
-db.select().from(courses).where(like(courses.name, `%${name}%`)).all();
-db.select().from(users).where(like(users.username, `%${username}%`)).all();
-```
-
----
-
-### #26 数据库缺少 CHECK 约束
-
-**修复方案：**
-
-在后续数据库迁移中加入：
-
-```sql
--- SQLite 不直接支持 ALTER TABLE ADD CONSTRAINT，需要重建表或在应用层做
--- 方案：在插入/更新时增加应用层校验（已在上述各项中覆盖）
-```
-
-由于 SQLite 的限制，CHECK 约束建议在应用层统一处理，已在 P2 的各项输入校验中覆盖。
-
----
 
 ## 修复顺序建议
 
@@ -682,8 +520,5 @@ db.select().from(users).where(like(users.username, `%${username}%`)).all();
   └── P1: #7 最大选课数 、#8 退课时限 、#9 名额非负数 、#4 #5 级联/自操作保护 、#6 权限实时校验
 
 第3轮（2-3天）：
-  └── P2: #10 #11 #12 #13 各项输入校验 、#17 ID 校验 、#19 XSS 、#23 重名校验
-
-第4轮（按需）：
-  └── P3: #18 分页 、#20-26 安全增强
+  └── P2: #10 #11 #13 各项输入校验 、#17 ID 校验 、#19 XSS 、#23 重名校验 、#16 错误信息过滤（可选）
 ```

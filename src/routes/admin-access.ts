@@ -1,9 +1,10 @@
 import { Router, Request, Response } from "express";
-import { eq, sql } from "drizzle-orm";
+import { eq, and, inArray, sql } from "drizzle-orm";
 import { db } from "../db/index";
 import { access, accessUsers, courses, users } from "../db/schema";
 import { requireAdmin } from "../middleware/auth";
 import { nowLocal } from "../utils/time";
+import { parseRouteId } from "../utils/parse-id";
 
 const router = Router();
 
@@ -45,33 +46,40 @@ router.get("/admin/access", requireAdmin, (_req: Request, res: Response) => {
 });
 
 router.post("/api/admin/access", requireAdmin, (req: Request, res: Response) => {
-  const { course_id, open_time, user_ids } = req.body;
+  const courseId = parseInt(req.body.course_id);
+  const openTime = req.body.open_time;
+  const userIds: string[] = (req.body.user_ids || "").toString().split(",").map((s: string) => s.trim()).filter(Boolean);
 
-  const inserted = db.insert(access).values({
-    courseId: parseInt(course_id),
-    openTime: open_time || nowLocal(),
-  }).returning().get();
+  if (isNaN(courseId) || courseId < 1) return res.status(400).send("无效的课程ID");
+  if (!openTime || isNaN(Date.parse(openTime))) return res.status(400).send("无效的开放时间");
+  if (userIds.length === 0) return res.status(400).send("至少选择一个学生");
 
-  if (!inserted) return res.redirect("/admin/access");
+  const course = db.select().from(courses).where(eq(courses.id, courseId)).get();
+  if (!course) return res.status(400).send("课程不存在");
 
-  const ids: number[] = Array.isArray(user_ids)
-    ? user_ids.map((id: string) => parseInt(id)).filter((id: number) => !isNaN(id))
-    : user_ids ? [parseInt(user_ids)] : [];
+  const uniqueIds = [...new Set(userIds.map(Number).filter(id => !isNaN(id) && id > 0))];
+  const validUsers = db.select({ id: users.id }).from(users)
+    .where(and(eq(users.isAdmin, 0), inArray(users.id, uniqueIds)))
+    .all();
+  const validIds = validUsers.map(u => u.id);
 
-  if (ids.length > 0) {
-    db.insert(accessUsers).values(
-      ids.map((userId: number) => ({
-        accessId: inserted.id,
-        userId,
-      }))
-    ).run();
-  }
+  if (validIds.length === 0) return res.status(400).send("没有有效的学生ID");
+
+  db.transaction((tx) => {
+    const result = tx.insert(access).values({ courseId, openTime: openTime || nowLocal() }).run();
+    if (result.lastInsertRowid && validIds.length > 0) {
+      tx.insert(accessUsers).values(
+        validIds.map(userId => ({ accessId: Number(result.lastInsertRowid), userId }))
+      ).run();
+    }
+  });
 
   res.redirect("/admin/access");
 });
 
 router.put("/api/admin/access/:id", requireAdmin, (req: Request, res: Response) => {
-  const accessId = parseInt(req.params.id as string);
+  const accessId = parseRouteId(req.params.id);
+  if (accessId === null) return res.status(400).send("无效的批次ID");
   const { open_time, user_ids } = req.body;
 
   const existing = db.select().from(access).where(eq(access.id, accessId)).get();
@@ -100,7 +108,8 @@ router.put("/api/admin/access/:id", requireAdmin, (req: Request, res: Response) 
 });
 
 router.delete("/api/admin/access/:id", requireAdmin, (req: Request, res: Response) => {
-  const accessId = parseInt(req.params.id as string);
+  const accessId = parseRouteId(req.params.id);
+  if (accessId === null) return res.status(400).send("无效的批次ID");
 
   db.delete(accessUsers).where(eq(accessUsers.accessId, accessId)).run();
   db.delete(access).where(eq(access.id, accessId)).run();

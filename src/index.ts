@@ -1,6 +1,7 @@
 import express from "express";
 import session from "express-session";
 import Database from "better-sqlite3";
+import crypto from "crypto";
 import path from "path";
 import { fileURLToPath } from "url";
 import { db } from "./db/index";
@@ -15,30 +16,52 @@ import adminCoursesRouter from "./routes/admin-courses";
 import adminAccessRouter from "./routes/admin-access";
 import adminUsersRouter from "./routes/admin-users";
 import adminClassRouter from "./routes/admin-class";
+import type { Request, Response, NextFunction } from "express";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 
+app.set("trust proxy", 1);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+const sessionSecret = process.env.SESSION_SECRET || "elective-system-secret-change-in-production";
 
 const sessionDb = new Database("data/sessions.db");
 sessionDb.pragma("journal_mode = WAL");
 
 app.use(session({
   store: new BetterSqlite3Store({ db: sessionDb }),
-  secret: "elective-system-secret-change-in-production",
+  secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 },
+  cookie: { maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" },
 }));
 
 app.use(express.static(path.join(path.dirname(__dirname), "public")));
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
+
+function csrfMiddleware(req: Request, res: Response, next: NextFunction) {
+  if (["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+    if (!req.session.csrfToken) {
+      req.session.csrfToken = crypto.randomBytes(32).toString("hex");
+    }
+    res.locals.csrfToken = req.session.csrfToken;
+    return next();
+  }
+
+  const token = req.body?._csrf || req.headers["x-csrf-token"];
+  if (!token || token !== req.session.csrfToken) {
+    return res.status(403).send("CSRF 验证失败");
+  }
+  next();
+}
+
+app.use(csrfMiddleware);
 
 app.use((req, _res, next) => {
   _res.locals.currentPath = req.path;

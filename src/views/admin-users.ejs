@@ -3,6 +3,7 @@
 <details class="mb-6 bg-white rounded-xl shadow-sm border border-gray-100">
   <summary class="px-6 py-3 cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 select-none">+ 新建用户</summary>
   <form method="POST" action="/api/admin/users" class="px-6 pb-4">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
       <%- include('_components/form-field', { label: '用户名', name: 'username', required: true }) %>
       <%- include('_components/form-field', { label: '密码', name: 'password', type: 'password', required: true }) %>

@@ -1,9 +1,10 @@
 import { Router, Request, Response } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, count, ne } from "drizzle-orm";
 import bcryptjs from "bcryptjs";
 import { db } from "../db/index";
 import { users, selections, accessUsers } from "../db/schema";
 import { requireAdmin } from "../middleware/auth";
+import { parseRouteId } from "../utils/parse-id";
 
 const router = Router();
 
@@ -54,11 +55,32 @@ router.post("/api/admin/users", requireAdmin, (req: Request, res: Response) => {
 });
 
 router.put("/api/admin/users/:id", requireAdmin, (req: Request, res: Response) => {
-  const userId = parseInt(req.params.id as string);
+  const userId = parseRouteId(req.params.id);
+  if (userId === null) return res.status(400).send("无效的用户ID");
   const { username, password, isAdmin } = req.body;
 
   const existing = db.select().from(users).where(eq(users.id, userId)).get();
   if (!existing) return res.status(404).send("用户不存在");
+
+  if (isAdmin !== undefined && isAdmin === "0" && userId === req.session.userId) {
+    return res.status(400).send("不能取消自己的管理员权限");
+  }
+
+  if (isAdmin !== undefined && (isAdmin === "0" || isAdmin === 0)) {
+    const adminCount = db.select({ count: count() }).from(users).where(eq(users.isAdmin, 1)).get()?.count ?? 0;
+    if (adminCount <= 1) {
+      return res.status(400).send("不能移除最后一个管理员");
+    }
+  }
+
+  if (username !== undefined && username !== "") {
+    const dup = db.select().from(users)
+      .where(and(eq(users.username, username), ne(users.id, userId)))
+      .get();
+    if (dup) {
+      return res.status(400).send("用户名已被其他用户使用");
+    }
+  }
 
   const updateData: any = {};
 
@@ -80,14 +102,28 @@ router.put("/api/admin/users/:id", requireAdmin, (req: Request, res: Response) =
 });
 
 router.delete("/api/admin/users/:id", requireAdmin, (req: Request, res: Response) => {
-  const userId = parseInt(req.params.id as string);
+  const userId = parseRouteId(req.params.id);
+  if (userId === null) return res.status(400).send("无效的用户ID");
+
+  if (userId === req.session.userId) {
+    return res.status(400).send("不能删除自己的账户");
+  }
 
   const existing = db.select().from(users).where(eq(users.id, userId)).get();
   if (!existing) return res.status(404).send("用户不存在");
 
-  db.delete(selections).where(eq(selections.userId, userId)).run();
-  db.delete(accessUsers).where(eq(accessUsers.userId, userId)).run();
-  db.delete(users).where(eq(users.id, userId)).run();
+  if (existing.isAdmin) {
+    const adminCount = db.select({ count: count() }).from(users).where(eq(users.isAdmin, 1)).get()?.count ?? 0;
+    if (adminCount <= 1) {
+      return res.status(400).send("不能移除最后一个管理员");
+    }
+  }
+
+  db.transaction((tx) => {
+    tx.delete(selections).where(eq(selections.userId, userId)).run();
+    tx.delete(accessUsers).where(eq(accessUsers.userId, userId)).run();
+    tx.delete(users).where(eq(users.id, userId)).run();
+  });
 
   res.status(200).send("OK");
 });
