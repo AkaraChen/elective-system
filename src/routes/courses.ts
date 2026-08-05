@@ -54,7 +54,7 @@ router.get("/courses", requireAuth, (req: Request, res: Response) => {
       state = "waiting";
     }
 
-    return { ...c, opentime, state };
+    return { ...c, opentime, state, endtime: endTime };
   });
 
   res.render("courses", { courses: courseList, now, endTime });
@@ -101,10 +101,14 @@ router.post("/api/courses/:id/select", requireAuth, (req: Request, res: Response
     const course = db.select().from(courses).where(eq(courses.id, courseId)).get()!;
     const opentime = getOpenTimeForUser(userId, courseId);
 
+    const endTimeRow2 = db.select({ value: config.value }).from(config).where(eq(config.key, "end_time")).get();
+    const endTimeStr = endTimeRow2?.value || "";
+
     const c = {
       ...course,
       opentime,
       state: "selected",
+      endtime: endTimeStr,
     };
 
     res.render("_course-card", { c, layout: false });
@@ -159,7 +163,7 @@ router.post("/api/courses/:id/drop", requireAuth, (req: Request, res: Response) 
       state = "full";
     }
 
-    const c = { ...course, opentime, state };
+    const c = { ...course, opentime, state, endtime: endTime };
 
     res.render("_course-card", { c, layout: false });
   } catch (e: any) {

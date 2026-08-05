@@ -66,15 +66,17 @@
         <svg class="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         退课
       </button>
+      <% if (c.endtime) { %>
+      <span class="countdown-end block mt-2 text-center text-xs text-gray-500" data-endtime="<%= c.endtime %>"></span>
+      <% } %>
     <% } else if (c.state === "full") { %>
       <button disabled class="w-full inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-gray-100 text-gray-400 cursor-not-allowed">已满</button>
     <% } else if (c.state === "closed") { %>
       <button disabled class="w-full inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-gray-100 text-gray-400 cursor-not-allowed">已截止</button>
     <% } else if (c.state === "waiting") { %>
-      <button disabled id="btn-<%= c.id %>" class="w-full inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-gray-100 text-gray-400 cursor-not-allowed">
-        --:--
+      <button disabled id="btn-<%= c.id %>" class="w-full inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-gray-100 text-gray-400 cursor-not-allowed" data-opentime="<%= c.opentime %>">
+        --
       </button>
-      <span class="countdown mt-2 block text-center text-sm text-gray-500 font-mono" data-opentime="<%= c.opentime %>" data-btn="btn-<%= c.id %>"></span>
     <% } else { %>
       <button id="btn-<%= c.id %>"
               class="relative w-full text-sm font-medium rounded-lg px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
@@ -88,6 +90,9 @@
         </svg>
         抢课
       </button>
+      <% if (c.endtime) { %>
+      <span class="countdown-end block mt-2 text-center text-xs text-gray-500" data-endtime="<%= c.endtime %>"></span>
+      <% } %>
     <% } %>
   </div>
 </article>

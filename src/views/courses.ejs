@@ -12,31 +12,49 @@
 
 <script>
 (function() {
-  var countdowns = document.querySelectorAll(".countdown");
-  if (countdowns.length === 0) return;
+  function formatCountdown(diff) {
+    var d = Math.floor(diff / 86400000);
+    var h = Math.floor((diff % 86400000) / 3600000);
+    var m = Math.floor((diff % 3600000) / 60000);
+    if (d > 0) return d + "天" + h + "时" + m + "分";
+    if (h > 0) return h + "时" + m + "分";
+    return m + "分";
+  }
+
+  var openBtns = document.querySelectorAll("button[data-opentime]");
+  var endSpans = document.querySelectorAll(".countdown-end");
+  if (openBtns.length === 0 && endSpans.length === 0) return;
+
   var timer = setInterval(function() {
     var now = new Date();
-    var allDone = true;
-    countdowns.forEach(function(el) {
-      var openTime = new Date(el.getAttribute("data-opentime"));
+    var anyActive = false;
+
+    openBtns.forEach(function(btn) {
+      var openTime = new Date(btn.getAttribute("data-opentime"));
       var diff = openTime - now;
-      var btn = document.getElementById(el.getAttribute("data-btn"));
       if (diff <= 0) {
-        el.textContent = "";
-        if (btn) btn.textContent = "抢课";
+        btn.textContent = "抢课";
+        btn.disabled = false;
+        btn.className = btn.className.replace(/bg-gray-100 text-gray-400 cursor-not-allowed/g, "bg-blue-600 text-white");
         location.reload();
         return;
       }
-      allDone = false;
-      var h = Math.floor(diff / 3600000);
-      var m = Math.floor((diff % 3600000) / 60000);
-      var s = Math.floor((diff % 60000) / 1000);
-      var text = (h > 0 ? String(h).padStart(2,"0") + ":" : "") +
-                 String(m).padStart(2,"0") + ":" + String(s).padStart(2,"0");
-      el.textContent = text;
-      if (btn) btn.textContent = text;
+      anyActive = true;
+      btn.textContent = formatCountdown(diff);
     });
-    if (allDone) clearInterval(timer);
+
+    endSpans.forEach(function(el) {
+      var endTime = new Date(el.getAttribute("data-endtime"));
+      var diff = endTime - now;
+      if (diff <= 0) {
+        el.textContent = "已截止";
+        return;
+      }
+      anyActive = true;
+      el.textContent = "剩余" + formatCountdown(diff);
+    });
+
+    if (!anyActive) clearInterval(timer);
   }, 1000);
 })();
 </script>
