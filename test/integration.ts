@@ -75,8 +75,10 @@ async function main() {
   // 2. Create course
   console.log("\n2. Create course");
   const now = new Date();
-  const openTime = new Date(now.getTime() - 60000).toISOString().substring(0, 16);
-  const endTimeStr = new Date(now.getTime() + 600000).toISOString().substring(0, 16);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const toLocalISOShort = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const openTime = toLocalISOShort(new Date(now.getTime() - 60000));
+  const endTimeStr = toLocalISOShort(new Date(now.getTime() + 600000));
 
   let resp = await post("/api/admin/courses",
     `name=IntegrationTest&teacher=Test&description=test&totalSeats=5&openTime=${encodeURIComponent(openTime)}`,

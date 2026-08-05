@@ -30,7 +30,10 @@ async function main() {
   }
 
   // Reset course 1 seats to 3 and clear any prior selections
-  const pastTime = new Date(Date.now() - 60000).toISOString().substring(0, 19);
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const toLocalISO = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  const pastTime = toLocalISO(new Date(now.getTime() - 60000));
   db.prepare("UPDATE courses SET available_seats = 3, open_time = ? WHERE id = 1").run(pastTime);
   db.prepare("DELETE FROM selections WHERE course_id = 1").run();
   db.close();

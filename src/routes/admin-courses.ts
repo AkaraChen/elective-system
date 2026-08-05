@@ -3,6 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "../db/index";
 import { courses, access, accessUsers, selections, config } from "../db/schema";
 import { requireAdmin } from "../middleware/auth";
+import { toLocalISOShort, nowLocal } from "../utils/time";
 
 const router = Router();
 
@@ -14,7 +15,7 @@ function getDefaultOpenTime(): string {
   const mar1 = mar1This > now ? mar1This : new Date(year + 1, 2, 1);
   const sep1 = sep1This > now ? sep1This : new Date(year + 1, 8, 1);
   const closer = mar1.getTime() - now.getTime() < sep1.getTime() - now.getTime() ? mar1 : sep1;
-  return closer.toISOString().substring(0, 16);
+  return toLocalISOShort(closer);
 }
 
 router.get("/admin/courses", requireAdmin, (_req: Request, res: Response) => {
@@ -52,7 +53,7 @@ router.post("/api/admin/courses", requireAdmin, (req: Request, res: Response) =>
     location: location || null,
     totalSeats: seats,
     availableSeats: seats,
-    openTime: openTime || new Date().toISOString(),
+    openTime: openTime || nowLocal(),
   }).run();
 
   res.redirect("/admin/courses");

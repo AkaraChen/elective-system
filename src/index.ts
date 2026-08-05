@@ -14,6 +14,7 @@ import selectionsRouter from "./routes/selections";
 import adminCoursesRouter from "./routes/admin-courses";
 import adminAccessRouter from "./routes/admin-access";
 import adminUsersRouter from "./routes/admin-users";
+import adminClassRouter from "./routes/admin-class";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -74,6 +75,7 @@ app.use("/", selectionsRouter);
 app.use("/", adminCoursesRouter);
 app.use("/", adminAccessRouter);
 app.use("/", adminUsersRouter);
+app.use("/", adminClassRouter);
 
 app.listen(8080, () => {
   console.log("Server running on http://localhost:8080");

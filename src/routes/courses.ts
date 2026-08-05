@@ -3,6 +3,7 @@ import { eq, and } from "drizzle-orm";
 import { db, rawDb } from "../db/index";
 import { courses, access, accessUsers, selections, config } from "../db/schema";
 import { requireAuth } from "../middleware/auth";
+import { nowLocal } from "../utils/time";
 
 const router = Router();
 
@@ -24,7 +25,7 @@ router.get("/courses", requireAuth, (req: Request, res: Response) => {
   if (req.session.isAdmin) return res.redirect("/admin/courses");
 
   const userId = req.session.userId!;
-  const now = new Date().toISOString();
+  const now = nowLocal();
 
   const endTimeRow = db.select({ value: config.value }).from(config).where(eq(config.key, "end_time")).get();
   const endTime = endTimeRow?.value || now;
@@ -64,7 +65,7 @@ router.post("/api/courses/:id/select", requireAuth, (req: Request, res: Response
 
   const userId = req.session.userId!;
   const courseId = Number(req.params.id);
-  const now = new Date().toISOString();
+  const now = nowLocal();
 
   try {
     db.transaction((tx) => {
@@ -117,7 +118,7 @@ router.post("/api/courses/:id/drop", requireAuth, (req: Request, res: Response) 
 
   const userId = req.session.userId!;
   const courseId = Number(req.params.id);
-  const now = new Date().toISOString();
+  const now = nowLocal();
 
   try {
     db.transaction((tx) => {

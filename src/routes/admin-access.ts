@@ -3,6 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "../db/index";
 import { access, accessUsers, courses, users } from "../db/schema";
 import { requireAdmin } from "../middleware/auth";
+import { nowLocal } from "../utils/time";
 
 const router = Router();
 
@@ -48,7 +49,7 @@ router.post("/api/admin/access", requireAdmin, (req: Request, res: Response) => 
 
   const inserted = db.insert(access).values({
     courseId: parseInt(course_id),
-    openTime: open_time || new Date().toISOString(),
+    openTime: open_time || nowLocal(),
   }).returning().get();
 
   if (!inserted) return res.redirect("/admin/access");
