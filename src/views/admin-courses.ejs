@@ -14,14 +14,14 @@
   </div>
 </form>
 
-<h2 class="text-2xl font-bold text-gray-900 mb-6">用户端标题</h2>
+<h2 class="text-2xl font-bold text-gray-900 mb-6">显示标题</h2>
 
 <form method="POST" action="/api/admin/config?_method=PUT" class="mb-6">
   <input type="hidden" name="key" value="site_title">
   <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
     <input type="text" name="value"
       value="<%= typeof siteTitle === 'string' ? siteTitle : '选课系统' %>"
-      placeholder="用户端页面上显示的标题"
+      placeholder="本系统显示的标题"
       required
       class="rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex-1" />
     <button type="submit" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors whitespace-nowrap">
@@ -30,7 +30,7 @@
   </div>
 </form>
 
-<h2 class="text-2xl font-bold text-gray-900 mb-4">课程管理</h2>
+<h2 class="text-2xl font-bold text-gray-900 mb-4">课程列表</h2>
 
 <details class="mb-6 bg-white rounded-xl shadow-sm border border-gray-100">
   <summary class="px-6 py-3 cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 select-none">+ 新建课程</summary>
