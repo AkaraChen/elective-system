@@ -1,0 +1,172 @@
+<h2 class="text-2xl font-bold text-gray-900 mb-6">全局截止时间</h2>
+
+<form method="POST" action="/api/admin/config?_method=PUT" class="mb-6">
+  <input type="hidden" name="key" value="end_time">
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+    <input type="datetime-local" name="value"
+      value="<%= typeof endTime === 'string' ? endTime.replace(/:\d{2}\.\d{3}Z$/, '').replace('T', ' ').substring(0,16).replace(' ', 'T') : endTime %>"
+      required
+      class="rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex-1" />
+    <button type="submit" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors whitespace-nowrap">
+      保存截止时间
+    </button>
+  </div>
+</form>
+
+<h2 class="text-2xl font-bold text-gray-900 mb-6">用户端标题</h2>
+
+<form method="POST" action="/api/admin/config?_method=PUT" class="mb-6">
+  <input type="hidden" name="key" value="site_title">
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+    <input type="text" name="value"
+      value="<%= typeof siteTitle === 'string' ? siteTitle : '选课系统' %>"
+      placeholder="用户端页面上显示的标题"
+      required
+      class="rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex-1" />
+    <button type="submit" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors whitespace-nowrap">
+      保存标题
+    </button>
+  </div>
+</form>
+
+<h2 class="text-2xl font-bold text-gray-900 mb-4">课程管理</h2>
+
+<details class="mb-6 bg-white rounded-xl shadow-sm border border-gray-100">
+  <summary class="px-6 py-3 cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 select-none">+ 新建课程</summary>
+  <form method="POST" action="/api/admin/courses" class="px-6 pb-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <%- include('_components/form-field', { label: '课程名', name: 'name', required: true }) %>
+      <%- include('_components/form-field', { label: '教师', name: 'teacher', required: true }) %>
+      <%- include('_components/form-field', { label: '上课时间', name: 'courseTime' }) %>
+      <%- include('_components/form-field', { label: '上课地点', name: 'location' }) %>
+      <%- include('_components/form-field', { label: '总名额', name: 'totalSeats', type: 'number', value: '30', required: true }) %>
+      <%- include('_components/form-field', { label: '默认开放时间', name: 'openTime', type: 'datetime-local', required: true }) %>
+    </div>
+    <%- include('_components/form-field', { label: '课程描述', name: 'description' }) %>
+    <button type="submit" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+      创建课程
+    </button>
+  </form>
+</details>
+
+<div class="overflow-hidden md:bg-white md:rounded-xl md:shadow-sm md:border md:border-gray-100">
+  <div class="hidden md:grid md:grid-cols-8 gap-2 px-6 py-3 bg-gray-50 border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wider">
+    <span>ID</span>
+    <span>课程名</span>
+    <span>教师</span>
+    <span>上课时间</span>
+    <span>地点</span>
+    <span>开放时间</span>
+    <span>已选/总</span>
+    <span class="text-center">操作</span>
+  </div>
+
+  <div class="grid grid-cols-2 gap-3 md:grid-cols-1 md:gap-0 md:divide-y md:divide-gray-50">
+    <% courses.forEach(function(c) { %>
+      <div id="course-wrapper-<%= c.id %>" class="flex flex-col md:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden md:rounded-none md:shadow-none md:border-0">
+        <div id="course-row-<%= c.id %>" class="flex-1 md:flex-none grid grid-cols-1 md:grid-cols-8 gap-x-2 gap-y-1.5 px-6 py-3 items-center md:hover:bg-gray-50 transition-colors">
+          <div class="flex justify-between md:block">
+            <span class="text-xs text-gray-400 md:hidden">ID</span>
+            <span class="text-sm text-gray-500"><%= c.id %></span>
+          </div>
+          <div class="flex justify-between md:block">
+            <span class="text-xs text-gray-400 md:hidden">课程名</span>
+            <span class="text-sm font-medium text-gray-900"><%= c.name %></span>
+          </div>
+          <div class="flex justify-between md:block">
+            <span class="text-xs text-gray-400 md:hidden">教师</span>
+            <span class="text-sm text-gray-600"><%= c.teacher %></span>
+          </div>
+          <div class="flex justify-between md:block">
+            <span class="text-xs text-gray-400 md:hidden">上课时间</span>
+            <span class="text-sm text-gray-600"><%= c.courseTime || "-" %></span>
+          </div>
+          <div class="flex justify-between md:block">
+            <span class="text-xs text-gray-400 md:hidden">地点</span>
+            <span class="text-sm text-gray-600"><%= c.location || "-" %></span>
+          </div>
+          <div class="flex justify-between md:block">
+            <span class="text-xs text-gray-400 md:hidden">开放时间</span>
+            <span class="text-sm text-gray-600"><%= c.openTime ? c.openTime.substring(0, 16).replace("T", " ") : "-" %></span>
+          </div>
+          <div class="flex justify-between md:block">
+            <span class="text-xs text-gray-400 md:hidden">已选/总</span>
+            <span class="text-sm font-medium <%= (c.selected_count || 0) >= c.totalSeats ? 'text-red-600' : 'text-green-600' %>"><%= c.selected_count || 0 %> / <%= c.totalSeats %></span>
+          </div>
+          <div class="hidden md:flex justify-end md:justify-center gap-1 pt-1 md:pt-0">
+            <button onclick="document.getElementById('edit-<%= c.id %>').classList.toggle('hidden')" class="text-xs font-medium rounded-lg px-2.5 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">
+              编辑
+            </button>
+            <button hx-delete="/api/admin/courses/<%= c.id %>"
+                    hx-confirm="确定删除该课程？这将同步删除课程相关的批次。"
+                    hx-target="#course-wrapper-<%= c.id %>"
+                    hx-swap="delete"
+                    class="text-xs font-medium rounded-lg px-2.5 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 transition-colors">
+              删除
+            </button>
+          </div>
+        </div>
+
+        <div class="md:hidden px-4 py-2 border-t border-gray-100 flex justify-end gap-2">
+          <button onclick="document.getElementById('edit-<%= c.id %>').classList.toggle('hidden')" class="text-xs font-medium rounded-lg px-2.5 py-1.5 bg-white border border-gray-300 text-gray-700">编辑</button>
+          <button hx-delete="/api/admin/courses/<%= c.id %>"
+                  hx-confirm="确定删除该课程？这将同步删除课程相关的批次。"
+                  hx-target="#course-wrapper-<%= c.id %>"
+                  hx-swap="delete"
+                  class="text-xs font-medium rounded-lg px-2.5 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200">删除</button>
+        </div>
+
+        <div id="edit-<%= c.id %>" class="hidden border-t border-dashed border-gray-200 px-6 py-4 bg-gray-50/50">
+          <form method="POST" action="/api/admin/courses/<%= c.id %>?_method=PUT">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <%- include('_components/form-field', { label: '课程名', name: 'name', value: c.name, required: true }) %>
+              <%- include('_components/form-field', { label: '教师', name: 'teacher', value: c.teacher, required: true }) %>
+              <%- include('_components/form-field', { label: '上课时间', name: 'courseTime', value: c.courseTime || '' }) %>
+              <%- include('_components/form-field', { label: '上课地点', name: 'location', value: c.location || '' }) %>
+              <%- include('_components/form-field', { label: '总名额', name: 'totalSeats', type: 'number', value: String(c.totalSeats), required: true }) %>
+              <%- include('_components/form-field', { label: '默认开放时间', name: 'openTime', type: 'datetime-local', value: c.openTime ? c.openTime.substring(0, 16) : '' }) %>
+            </div>
+            <%- include('_components/form-field', { label: '课程描述', name: 'description', value: c.description || '' }) %>
+            <div class="flex items-center justify-between gap-2 pt-1">
+              <button type="submit" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors">保存</button>
+              <button type="button" onclick="document.getElementById('edit-<%= c.id %>').classList.add('hidden')" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">取消</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('form[action*="_method=PUT"]').forEach(function(form) {
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var url = form.getAttribute('action');
+      var method = 'POST';
+      var realUrl = url.replace('?_method=PUT', '').replace('?_method=DELETE', '');
+      if (url.indexOf('_method=DELETE') !== -1) method = 'DELETE';
+      else if (url.indexOf('_method=PUT') !== -1) method = 'PUT';
+
+      var formData = new FormData(form);
+      var params = new URLSearchParams();
+      formData.forEach(function(v, k) { if (k !== '_method') params.append(k, v); });
+
+      fetch(realUrl, {
+        method: method,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString()
+      }).then(function(res) {
+        if (res.redirected) {
+          window.location.href = res.url;
+        } else if (res.ok) {
+          window.location.reload();
+        } else {
+          res.text().then(function(t) { alert(t); });
+        }
+      });
+    });
+  });
+});
+</script>

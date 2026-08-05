@@ -1,0 +1,42 @@
+<h2 class="text-2xl font-bold text-gray-900 mb-6">课程列表</h2>
+
+<% if (courses.length === 0) { %>
+  <%- include('_components/empty-state', { title: '暂无课程', description: '管理员尚未添加任何课程' }) %>
+<% } else { %>
+  <div class="grid grid-cols-2 lg:grid-cols-3 gap-6">
+    <% courses.forEach(function(c) { %>
+      <%- include('_course-card', { c: c }) %>
+    <% }); %>
+  </div>
+<% } %>
+
+<script>
+(function() {
+  var countdowns = document.querySelectorAll(".countdown");
+  if (countdowns.length === 0) return;
+  var timer = setInterval(function() {
+    var now = new Date();
+    var allDone = true;
+    countdowns.forEach(function(el) {
+      var openTime = new Date(el.getAttribute("data-opentime"));
+      var diff = openTime - now;
+      var btn = document.getElementById(el.getAttribute("data-btn"));
+      if (diff <= 0) {
+        el.textContent = "";
+        if (btn) btn.textContent = "抢课";
+        location.reload();
+        return;
+      }
+      allDone = false;
+      var h = Math.floor(diff / 3600000);
+      var m = Math.floor((diff % 3600000) / 60000);
+      var s = Math.floor((diff % 60000) / 1000);
+      var text = (h > 0 ? String(h).padStart(2,"0") + ":" : "") +
+                 String(m).padStart(2,"0") + ":" + String(s).padStart(2,"0");
+      el.textContent = text;
+      if (btn) btn.textContent = text;
+    });
+    if (allDone) clearInterval(timer);
+  }, 1000);
+})();
+</script>

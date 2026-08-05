@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof siteTitle !== "undefined" ? siteTitle : "选课系统" %> - 登录</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="h-full">
+  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-100 px-4">
+    <div class="w-full max-w-md">
+      <div class="bg-white rounded-2xl shadow-xl p-8">
+        <div class="text-center mb-8">
+          <h1 class="text-2xl font-bold text-gray-900"><%= typeof siteTitle !== "undefined" ? siteTitle : "选课系统" %></h1>
+          <p class="mt-2 text-sm text-gray-500">请登录您的账号</p>
+        </div>
+
+        <% if (typeof error !== "undefined" && error) { %>
+          <div class="mb-6 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            <%= error %>
+          </div>
+        <% } %>
+
+        <form method="POST" action="/api/login">
+          <%- include('_components/form-field', {
+            label: '用户名',
+            name: 'username',
+            type: 'text',
+            required: true,
+            autocomplete: 'username'
+          }) %>
+
+          <%- include('_components/form-field', {
+            label: '密码',
+            name: 'password',
+            type: 'password',
+            required: true,
+            autocomplete: 'current-password'
+          }) %>
+
+          <%- include('_components/button', {
+            text: '登录',
+            variant: 'primary',
+            size: 'lg',
+            class: 'w-full mt-2'
+          }) %>
+        </form>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

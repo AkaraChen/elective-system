@@ -1,0 +1,31 @@
+<%
+  var variant = locals.variant !== undefined ? locals.variant : "primary";
+  var size = locals.size !== undefined ? locals.size : "md";
+  var disabled = locals.disabled !== undefined && locals.disabled;
+  var attrs = locals.attrs !== undefined ? locals.attrs : "";
+  var extraClass = locals.class !== undefined ? locals.class : "";
+  var tag = locals.href !== undefined ? "a" : "button";
+
+  var base = "inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2";
+
+  var variants = {
+    primary: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 disabled:bg-blue-300",
+    secondary: "bg-white text-gray-700 hover:bg-gray-50 focus:ring-blue-500 border border-gray-300 disabled:bg-gray-50 disabled:text-gray-400",
+    danger: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 disabled:bg-red-300",
+    ghost: "text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:ring-gray-400 disabled:text-gray-300"
+  };
+
+  var sizes = {
+    sm: "text-xs px-2.5 py-1.5",
+    md: "text-sm px-4 py-2",
+    lg: "text-base px-6 py-3"
+  };
+
+  var classes = base + " " + (variants[variant] || variants.primary) + " " + (sizes[size] || sizes.md);
+  if (disabled) classes += " opacity-50 cursor-not-allowed";
+%>
+<% if (tag === "a") { %>
+<a href="<%= href %>" class="<%= classes %> <%= extraClass %>" <%- attrs %>><%= text %></a>
+<% } else { %>
+<button class="<%= classes %> <%= extraClass %>" <%= disabled ? "disabled" : "" %> <%- attrs %>><%= text %></button>
+<% } %>

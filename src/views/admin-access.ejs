@@ -1,0 +1,252 @@
+<h2 class="text-2xl font-bold text-gray-900 mb-4">抢课批次管理</h2>
+
+<details class="mb-6 bg-white rounded-xl shadow-sm border border-gray-100">
+  <summary class="px-6 py-3 cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 select-none">+ 新建抢课批次</summary>
+  <form method="POST" action="/api/admin/access" class="px-6 pb-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <%- include('_components/form-field', { label: '课程', name: 'course_id', type: 'select', required: true, options: '<option value="">-- 选择课程 --</option>' + allCourses.map(function(c){ return '<option value="' + c.id + '">' + c.name + '</option>'; }).join('') }) %>
+      <%- include('_components/form-field', { label: '开放时间', name: 'open_time', type: 'datetime-local', required: true }) %>
+    </div>
+
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-gray-700 mb-1">粘贴学生名单</label>
+      <textarea id="batch-student-input"
+        placeholder="粘贴学生用户名，可用空格、逗号、换行分隔&#10;例：student1 student2,student3"
+        rows="4"
+        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"></textarea>
+    </div>
+
+    <div id="batch-badges" class="flex flex-wrap gap-1.5 mb-3 min-h-[2rem]"></div>
+    <div id="batch-unmatched" class="text-xs text-red-500 mb-3 hidden"></div>
+    <div id="batch-hidden-inputs"></div>
+
+    <button type="submit" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors">创建批次</button>
+  </form>
+</details>
+
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+  <div class="hidden md:grid md:grid-cols-5 gap-2 px-6 py-3 bg-gray-50 border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wider">
+    <span>ID</span>
+    <span>课程</span>
+    <span>开放时间</span>
+    <span>学生数</span>
+    <span class="text-center">操作</span>
+  </div>
+
+  <div class="divide-y divide-gray-50">
+    <% if (typeof accessRows !== "undefined" && accessRows.length > 0) { %>
+      <% accessRows.forEach(function(a) { %>
+        <div id="access-wrapper-<%= a.id %>">
+          <div id="access-row-<%= a.id %>" class="grid grid-cols-1 md:grid-cols-5 gap-x-2 gap-y-1.5 px-6 py-3 items-center hover:bg-gray-50 transition-colors">
+            <div class="flex justify-between md:block">
+              <span class="text-xs text-gray-400 md:hidden">ID</span>
+              <span class="text-sm text-gray-500"><%= a.id %></span>
+            </div>
+            <div class="flex justify-between md:block">
+              <span class="text-xs text-gray-400 md:hidden">课程</span>
+              <span class="text-sm font-medium text-gray-900"><%= a.course_name %></span>
+            </div>
+            <div class="flex justify-between md:block">
+              <span class="text-xs text-gray-400 md:hidden">开放时间</span>
+              <span class="text-sm text-gray-600"><%= a.open_time ? a.open_time.substring(0, 16).replace("T", " ") : "-" %></span>
+            </div>
+            <div class="flex justify-between md:block">
+              <span class="text-xs text-gray-400 md:hidden">学生数</span>
+              <span class="text-sm text-gray-600"><%= a.student_count %></span>
+            </div>
+            <div class="flex justify-end md:justify-center gap-1 pt-1 md:pt-0">
+              <button onclick="document.getElementById('edit-access-<%= a.id %>').classList.toggle('hidden')" class="text-xs font-medium rounded-lg px-2.5 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">编辑</button>
+              <button hx-delete="/api/admin/access/<%= a.id %>"
+                      hx-confirm="确定删除该批次？"
+                      hx-target="#access-wrapper-<%= a.id %>"
+                      hx-swap="delete"
+                      class="text-xs font-medium rounded-lg px-2.5 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 transition-colors">删除</button>
+            </div>
+          </div>
+
+          <% var existing = accessStudents && accessStudents[a.id] ? accessStudents[a.id] : []; %>
+          <div id="edit-access-<%= a.id %>" class="hidden border-t border-dashed border-gray-200 px-6 py-4 bg-gray-50/50">
+            <form method="POST" action="/api/admin/access/<%= a.id %>?_method=PUT">
+              <%- include('_components/form-field', { label: '开放时间', name: 'open_time', type: 'datetime-local', value: a.open_time ? a.open_time.substring(0, 16) : '' }) %>
+
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">当前批次学生</label>
+              <div class="student-badges flex flex-wrap gap-1.5 mb-3 min-h-[2rem] <%= existing.length === 0 ? 'items-center' : '' %>" data-access-id="<%= a.id %>">
+                <% if (existing.length === 0) { %>
+                  <span class="text-xs text-gray-400">暂无学生</span>
+                <% } else { %>
+                  <% existing.forEach(function(s) { %>
+                    <span class="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs font-medium text-blue-700" data-user-id="<%= s.userId %>">
+                      <%= s.username %>
+                      <button type="button" onclick="removeStudentBadge(this)" class="text-blue-400 hover:text-red-500 hover:bg-red-50 transition-colors mx-0.5" title="移除">×</button>
+                    </span>
+                  <% }); %>
+                <% } %>
+              </div>
+
+              <textarea class="edit-student-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y mb-2" rows="2" placeholder="粘贴学生用户名，可用空格、逗号、换行分隔"></textarea>
+              <button type="button" onclick="addStudentsToEdit(this)" class="inline-flex items-center justify-center text-xs font-medium rounded-lg px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors mb-3">批量添加</button>
+              <div class="edit-unmatched text-xs text-red-500 mb-3 hidden"></div>
+
+              <div class="hidden-inputs-container">
+                <% existing.forEach(function(s) { %>
+                  <input type="hidden" name="user_ids" value="<%= s.userId %>">
+                <% }); %>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <button type="submit" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors">保存</button>
+                <button type="button" onclick="document.getElementById('edit-access-<%= a.id %>').classList.add('hidden')" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">取消</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      <% }); %>
+    <% } else { %>
+      <div class="px-6 py-8 text-center text-sm text-gray-500">暂无批次记录</div>
+    <% } %>
+  </div>
+</div>
+
+<script>
+(function() {
+  var allStudents = <%- JSON.stringify(allStudents) %>;
+  var studentMap = {};
+  allStudents.forEach(function(s) { studentMap[s.username] = s.id; });
+
+  var SPLIT_RE = /[\s,，;；、\n\r]+/;
+
+  // ---- 创建批次：textarea 解析 ----
+  var textarea = document.getElementById('batch-student-input');
+  var badgesContainer = document.getElementById('batch-badges');
+  var unmatchedEl = document.getElementById('batch-unmatched');
+  var hiddenInputsContainer = document.getElementById('batch-hidden-inputs');
+
+  if (textarea) {
+    textarea.addEventListener('input', function() {
+      var raw = this.value.split(SPLIT_RE).filter(Boolean);
+      processNames(raw, badgesContainer, unmatchedEl, hiddenInputsContainer);
+    });
+  }
+
+  // ---- 编辑批次：批量添加 ----
+  window.addStudentsToEdit = function(btn) {
+    var container = btn.closest('[id^="edit-access-"]');
+    var textarea = container.querySelector('.edit-student-input');
+    var badgesEl = container.querySelector('.student-badges');
+    var hiddenEl = container.querySelector('.hidden-inputs-container');
+    var unmatchedEl = container.querySelector('.edit-unmatched');
+
+    var raw = textarea.value.split(SPLIT_RE).filter(Boolean);
+    textarea.value = '';
+    var unmatched = [];
+
+    raw.forEach(function(name) {
+      var userId = studentMap[name];
+      if (!userId) { unmatched.push(name); return; }
+      if (hiddenEl.querySelector('input[value="' + userId + '"]')) return;
+      addBadge(badgesEl, name, userId, true);
+      var inp = document.createElement('input');
+      inp.type = 'hidden';
+      inp.name = 'user_ids';
+      inp.value = userId;
+      hiddenEl.appendChild(inp);
+    });
+
+    if (unmatched.length > 0) {
+      unmatchedEl.textContent = '未识别：' + unmatched.join('、');
+      unmatchedEl.classList.remove('hidden');
+    } else {
+      unmatchedEl.classList.add('hidden');
+    }
+  };
+
+  // ---- 编辑批次：删除按钮 ----
+  window.removeStudentBadge = function(btn) {
+    var badge = btn.parentElement;
+    var container = btn.closest('[id^="edit-access-"]');
+    var hiddenEl = container.querySelector('.hidden-inputs-container');
+    var userId = badge.getAttribute('data-user-id');
+    badge.remove();
+    var inp = hiddenEl.querySelector('input[value="' + userId + '"]');
+    if (inp) inp.remove();
+    if (container.querySelector('.student-badges').children.length === 0) {
+      container.querySelector('.student-badges').innerHTML = '<span class="text-xs text-gray-400">暂无学生</span>';
+    }
+  };
+
+  // ---- 通用：名称列表 → badge + hidden input ----
+  function processNames(names, badgesEl, unmatchedEl, hiddenEl) {
+    hiddenEl.innerHTML = '';
+    badgesEl.innerHTML = '';
+    var matched = [];
+    var unmatched = [];
+
+    names.forEach(function(name) {
+      var id = studentMap[name];
+      if (id) matched.push({ id: id, name: name });
+      else unmatched.push(name);
+    });
+
+    var seen = {};
+    matched.forEach(function(s) {
+      if (seen[s.id]) return;
+      seen[s.id] = true;
+      addBadge(badgesEl, s.name, s.id, false);
+      var inp = document.createElement('input');
+      inp.type = 'hidden';
+      inp.name = 'user_ids';
+      inp.value = s.id;
+      hiddenEl.appendChild(inp);
+    });
+
+    if (unmatched.length > 0) {
+      unmatchedEl.textContent = '未识别：' + unmatched.join('、');
+      unmatchedEl.classList.remove('hidden');
+    } else {
+      unmatchedEl.classList.add('hidden');
+    }
+  }
+
+  function addBadge(container, name, userId, removable) {
+    // remove placeholder if exists
+    var ph = container.querySelector('.text-xs.text-gray-400');
+    if (ph) ph.remove();
+
+    var badge = document.createElement('span');
+    badge.className = 'inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs font-medium text-blue-700';
+    badge.setAttribute('data-user-id', userId);
+    badge.innerHTML = name;
+    if (removable) {
+      badge.innerHTML += '<button type="button" onclick="removeStudentBadge(this)" class="inline-flex items-center justify-center w-4 h-4 rounded-full text-blue-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="移除">×</button>';
+    }
+    container.appendChild(badge);
+  }
+
+  // ---- PUT 表单提交 ----
+  document.querySelectorAll('form[action*="_method=PUT"]').forEach(function(form) {
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var url = form.getAttribute('action');
+      var realUrl = url.replace('?_method=PUT', '');
+
+      var formData = new FormData(form);
+      var params = new URLSearchParams();
+      formData.forEach(function(v, k) { if (k !== '_method') params.append(k, v); });
+
+      fetch(realUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString()
+      }).then(function(res) {
+        if (res.redirected) {
+          window.location.href = res.url;
+        } else if (res.ok) {
+          window.location.reload();
+        } else {
+          res.text().then(function(t) { alert(t); });
+        }
+      });
+    });
+  });
+})();
+</script>

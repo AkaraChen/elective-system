@@ -1,0 +1,51 @@
+<h2 class="text-2xl font-bold text-gray-900 mb-6">我的选课</h2>
+
+<% if (selections.length === 0) { %>
+  <%- include('_components/empty-state', { title: '暂无选课记录', description: '去课程列表选一门课吧' }) %>
+<% } else { %>
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="hidden md:grid md:grid-cols-6 gap-4 px-6 py-3 bg-gray-50 border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wider">
+      <span>课程名</span>
+      <span>教师</span>
+      <span>上课时间</span>
+      <span>地点</span>
+      <span>选课时间</span>
+      <span class="text-center">操作</span>
+    </div>
+
+    <div class="divide-y divide-gray-50">
+      <% selections.forEach(function(s) { %>
+        <div class="selection-item grid grid-cols-1 md:grid-cols-6 gap-x-4 gap-y-1.5 px-6 py-4 items-center hover:bg-gray-50 transition-colors">
+          <div class="flex justify-between md:block">
+            <span class="text-xs text-gray-400 md:hidden">课程名</span>
+            <span class="text-sm font-medium text-gray-900"><%= s.courseName %></span>
+          </div>
+          <div class="flex justify-between md:block">
+            <span class="text-xs text-gray-400 md:hidden">教师</span>
+            <span class="text-sm text-gray-600"><%= s.teacher %></span>
+          </div>
+          <div class="flex justify-between md:block">
+            <span class="text-xs text-gray-400 md:hidden">上课时间</span>
+            <span class="text-sm text-gray-600"><%= s.courseTime || "-" %></span>
+          </div>
+          <div class="flex justify-between md:block">
+            <span class="text-xs text-gray-400 md:hidden">地点</span>
+            <span class="text-sm text-gray-600"><%= s.location || "-" %></span>
+          </div>
+          <div class="flex justify-between md:block">
+            <span class="text-xs text-gray-400 md:hidden">选课时间</span>
+            <span class="text-sm text-gray-500"><%= s.createdAt.substring(0, 16).replace("T", " ") %></span>
+          </div>
+          <div class="md:text-center pt-2 md:pt-0">
+            <button hx-post="/api/courses/<%= s.courseId %>/drop"
+                    hx-target="closest .selection-item"
+                    hx-swap="delete"
+                    class="inline-flex items-center justify-center text-xs font-medium rounded-lg px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 transition-colors w-full md:w-auto">
+              退课
+            </button>
+          </div>
+        </div>
+      <% }); %>
+    </div>
+  </div>
+<% } %>
