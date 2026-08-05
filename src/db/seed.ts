@@ -59,6 +59,7 @@ export function seed(d: ReturnType<typeof drizzle>) {
   d.insert(config).values([
     { key: "end_time", value: "2026-08-15T23:59:59" },
     { key: "site_title", value: "选课系统" },
+    { key: "max_selections", value: "0" },
   ]).run();
 
   console.log("Seed done");

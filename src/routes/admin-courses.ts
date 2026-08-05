@@ -23,7 +23,12 @@ router.get("/admin/courses", requireAdmin, (_req: Request, res: Response) => {
   const endTime = endTimeRow?.value || "";
   const siteTitleRow = db.select({ value: config.value }).from(config).where(eq(config.key, "site_title")).get();
   const siteTitle = siteTitleRow?.value || "选课系统";
+  const maxSelectionsRow = db.select({ value: config.value }).from(config).where(eq(config.key, "max_selections")).get();
+  const maxSelections = maxSelectionsRow?.value || "0";
   const defaultOpenTime = getDefaultOpenTime();
+  const closerMonth = defaultOpenTime.substring(5, 7);
+  const closerYear = defaultOpenTime.substring(0, 4);
+  const nextOpenDateLabel = `${closerYear}年${closerMonth === "03" ? "3" : "9"}月1日`;
   const minEndDate = defaultOpenTime.substring(0, 10);
 
   const courseRows = db.all(
@@ -38,7 +43,7 @@ router.get("/admin/courses", requireAdmin, (_req: Request, res: Response) => {
         ORDER BY c.id`
   ) as any[];
 
-  res.render("admin-courses", { title: "课程管理", courses: courseRows, endTime, siteTitle, defaultOpenTime, minEndDate });
+  res.render("admin-courses", { title: "课程管理", courses: courseRows, endTime, siteTitle, maxSelections, nextOpenDateLabel, defaultOpenTime, minEndDate });
 });
 
 router.post("/api/admin/courses", requireAdmin, (req: Request, res: Response) => {
