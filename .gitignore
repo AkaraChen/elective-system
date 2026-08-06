@@ -138,6 +138,9 @@ dist
 # SQLite data
 data/
 
+# Generated CSS
+public/style.css
+
 # Test artifacts
 *.html
 *.txt
