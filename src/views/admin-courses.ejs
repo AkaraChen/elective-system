@@ -66,7 +66,7 @@
       <%- include('_components/form-field', { label: '总名额', name: 'totalSeats', type: 'number', value: '30', required: true }) %>
       <%- include('_components/form-field', { label: '默认开放时间', name: 'openTime', type: 'date', value: typeof defaultOpenTime === 'string' ? defaultOpenTime : '', required: true }) %>
     </div>
-    <%- include('_components/form-field', { label: '课程描述', name: 'description' }) %>
+    <%- include('_components/form-field', { label: '课程描述', name: 'description', type: 'textarea' }) %>
     <button type="submit" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
       创建课程
     </button>
@@ -131,7 +131,7 @@
               <%- include('_components/form-field', { label: '总名额', name: 'totalSeats', type: 'number', value: String(c.totalSeats), required: true }) %>
               <%- include('_components/form-field', { label: '默认开放时间', name: 'openTime', type: 'date', value: c.openTime ? c.openTime.substring(0, 10) : '' }) %>
             </div>
-            <%- include('_components/form-field', { label: '课程描述', name: 'description', value: c.description || '' }) %>
+            <%- include('_components/form-field', { label: '课程描述', name: 'description', type: 'textarea', value: c.description || '' }) %>
             <div class="flex items-center justify-between gap-2 pt-1">
               <button type="submit" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors">保存</button>
               <button type="button" onclick="document.getElementById('edit-<%= c.id %>').classList.add('hidden')" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">取消</button>
