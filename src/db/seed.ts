@@ -14,8 +14,8 @@ export function seed(d: ReturnType<typeof drizzle>) {
   d.delete(config).run();
   d.run(sql.raw("DELETE FROM sqlite_sequence"));
 
-  const adminHash = bcryptjs.hashSync("admin123", 10);
-  const studentHash = bcryptjs.hashSync("123456", 10);
+  const adminHash = bcryptjs.hashSync("123", 10);
+  const studentHash = bcryptjs.hashSync("123", 10);
 
   d.insert(users).values([
     { username: "admin", password: adminHash, isAdmin: 1 },
@@ -32,7 +32,7 @@ export function seed(d: ReturnType<typeof drizzle>) {
       location: "教学楼A-301",
       totalSeats: 60,
       availableSeats: 60,
-      openTime: "2026-08-10T09:00:00",
+      openTime: "2026-08-01T00:00:00",
     },
     {
       name: "Go语言",
@@ -42,13 +42,13 @@ export function seed(d: ReturnType<typeof drizzle>) {
       location: "教学楼B-205",
       totalSeats: 40,
       availableSeats: 40,
-      openTime: "2026-08-11T09:00:00",
+      openTime: "2026-08-30T00:00:00",
     },
   ]).run();
 
   d.insert(access).values({
     courseId: 1,
-    openTime: "2026-08-09T12:00:00",
+    openTime: "2026-08-09T00:00:00",
   }).run();
 
   d.insert(accessUsers).values([
@@ -58,7 +58,7 @@ export function seed(d: ReturnType<typeof drizzle>) {
 
   d.insert(config).values([
     { key: "end_time", value: "2026-08-15T23:59:59" },
-    { key: "site_title", value: "选课系统" },
+    { key: "site_title", value: "随便啥标题" },
     { key: "max_selections", value: "0" },
   ]).run();
 
