@@ -122,10 +122,6 @@ npm run db:push          # 推送 Drizzle schema 到数据库
 npm run db:seed          # 写入种子数据
 npm run db:init          # db:push + db:seed
 npm run typecheck        # TypeScript 类型检查
-
-# 测试
-npx tsx test/integration.ts    # 全流程集成测试
-npx tsx test/concurrent.ts     # 并发安全测试
 ```
 
 ## 部署
