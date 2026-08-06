@@ -73,51 +73,40 @@
   </form>
 </details>
 
-<div class="overflow-hidden md:bg-white md:rounded-xl md:shadow-sm md:border md:border-gray-100">
-  <div class="hidden md:grid md:grid-cols-8 gap-2 px-6 py-3 bg-gray-50 border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wider">
-    <span>ID</span>
-    <span>课程名</span>
-    <span>教师</span>
-    <span>上课时间</span>
-    <span>地点</span>
-    <span>开放时间</span>
-    <span>已选/总</span>
-    <span class="text-center">操作</span>
-  </div>
-
-  <div class="grid grid-cols-2 gap-3 md:grid-cols-1 md:gap-0 md:divide-y md:divide-gray-50">
+<div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
     <% courses.forEach(function(c) { %>
-      <div id="course-wrapper-<%= c.id %>" class="flex flex-col md:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden md:rounded-none md:shadow-none md:border-0">
-        <div id="course-row-<%= c.id %>" class="flex-1 md:flex-none grid grid-cols-1 md:grid-cols-8 gap-x-2 gap-y-1.5 px-6 py-3 items-center md:hover:bg-gray-50 transition-colors">
-          <div class="flex justify-between md:block">
-            <span class="text-xs text-gray-400 md:hidden">ID</span>
+      <div id="course-wrapper-<%= c.id %>" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div id="course-row-<%= c.id %>" class="grid grid-cols-1 gap-y-1.5 px-6 py-3 transition-colors">
+          <div class="flex justify-between">
+            <span class="text-xs text-gray-400">ID</span>
             <span class="text-sm text-gray-500"><%= c.id %></span>
           </div>
-          <div class="flex justify-between md:block">
-            <span class="text-xs text-gray-400 md:hidden">课程名</span>
+          <div class="flex justify-between">
+            <span class="text-xs text-gray-400">课程名</span>
             <span class="text-sm font-medium text-gray-900"><%= c.name %></span>
           </div>
-          <div class="flex justify-between md:block">
-            <span class="text-xs text-gray-400 md:hidden">教师</span>
+          <div class="flex justify-between">
+            <span class="text-xs text-gray-400">教师</span>
             <span class="text-sm text-gray-600"><%= c.teacher %></span>
           </div>
-          <div class="flex justify-between md:block">
-            <span class="text-xs text-gray-400 md:hidden">上课时间</span>
+          <div class="flex justify-between">
+            <span class="text-xs text-gray-400">上课时间</span>
             <span class="text-sm text-gray-600"><%= c.courseTime || "-" %></span>
           </div>
-          <div class="flex justify-between md:block">
-            <span class="text-xs text-gray-400 md:hidden">地点</span>
+          <div class="flex justify-between">
+            <span class="text-xs text-gray-400">地点</span>
             <span class="text-sm text-gray-600"><%= c.location || "-" %></span>
           </div>
-          <div class="flex justify-between md:block">
-            <span class="text-xs text-gray-400 md:hidden">开放时间</span>
+          <div class="flex justify-between">
+            <span class="text-xs text-gray-400">开放时间</span>
             <span class="text-sm text-gray-600"><%= c.openTime ? c.openTime.substring(0, 10) : "-" %></span>
           </div>
-          <div class="flex justify-between md:block">
-            <span class="text-xs text-gray-400 md:hidden">已选/总</span>
+          <div class="flex justify-between">
+            <span class="text-xs text-gray-400">已选/总</span>
             <span class="text-sm font-medium <%= (c.selected_count || 0) >= c.totalSeats ? 'text-red-600' : 'text-green-600' %>"><%= c.selected_count || 0 %> / <%= c.totalSeats %></span>
           </div>
-          <div class="hidden md:flex justify-end md:justify-center gap-1 pt-1 md:pt-0">
+          <div class="flex justify-end gap-2 pt-1">
             <button onclick="document.getElementById('edit-<%= c.id %>').classList.toggle('hidden')" class="text-xs font-medium rounded-lg px-2.5 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">
               编辑
             </button>
@@ -129,15 +118,6 @@
               删除
             </button>
           </div>
-        </div>
-
-        <div class="md:hidden px-4 py-2 border-t border-gray-100 flex justify-end gap-2">
-          <button onclick="document.getElementById('edit-<%= c.id %>').classList.toggle('hidden')" class="text-xs font-medium rounded-lg px-2.5 py-1.5 bg-white border border-gray-300 text-gray-700">编辑</button>
-          <button hx-delete="/api/admin/courses/<%= c.id %>"
-                  hx-confirm="确定删除该课程？这将同步删除课程相关的批次。"
-                  hx-target="#course-wrapper-<%= c.id %>"
-                  hx-swap="delete"
-                  class="text-xs font-medium rounded-lg px-2.5 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200">删除</button>
         </div>
 
         <div id="edit-<%= c.id %>" class="hidden border-t border-dashed border-gray-200 px-6 py-4 bg-gray-50/50">
@@ -157,6 +137,7 @@
               <button type="button" onclick="document.getElementById('edit-<%= c.id %>').classList.add('hidden')" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">取消</button>
           </div>
         </form>
+      </div>
       </div>
     <% }); %>
   </div>
