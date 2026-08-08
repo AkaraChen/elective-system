@@ -107,6 +107,7 @@ router.put("/api/admin/courses/:id", requireAdmin, (req: Request, res: Response)
       return res.status(400).send(`总名额不能小于已选人数（${selectedCount}）`);
     }
     updateData.totalSeats = seats;
+    updateData.availableSeats = seats - selectedCount;
   }
 
   if (resetSeats === "true" || resetSeats === "1") {
@@ -158,8 +159,8 @@ router.put("/api/admin/config", requireAdmin, (req: Request, res: Response) => {
   if (key === "end_time" && value && isNaN(Date.parse(value))) {
     return res.status(400).send("截止时间格式不正确");
   }
-  if (key === "max_selections" && (isNaN(parseInt(value)) || parseInt(value) < 1)) {
-    return res.status(400).send("最大选课数必须为正整数");
+  if (key === "max_selections" && (isNaN(parseInt(value)) || parseInt(value) < 0)) {
+    return res.status(400).send("最大选课数必须为非负整数");
   }
 
   db.insert(config).values({ key, value: value || "" })

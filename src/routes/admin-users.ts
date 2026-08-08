@@ -66,7 +66,7 @@ router.put("/api/admin/users/:id", requireAdmin, (req: Request, res: Response) =
     return res.status(400).send("不能取消自己的管理员权限");
   }
 
-  if (isAdmin !== undefined && (isAdmin === "0" || isAdmin === 0)) {
+  if (existing.isAdmin && isAdmin !== undefined && (isAdmin === "0" || isAdmin === 0)) {
     const adminCount = db.select({ count: count() }).from(users).where(eq(users.isAdmin, 1)).get()?.count ?? 0;
     if (adminCount <= 1) {
       return res.status(400).send("不能移除最后一个管理员");

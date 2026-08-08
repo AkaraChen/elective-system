@@ -26,6 +26,8 @@ npm run dev
 
 打开 http://localhost:8080。
 
+`db:init` 可重复执行：数据库已有用户时会保留现有数据，不会重新写入演示数据。
+
 ## 默认账号
 
 | 角色 | 用户名 | 密码 |
@@ -128,7 +130,7 @@ npm run typecheck        # TypeScript 类型检查
 
 ```bash
 npm run db:init
-npm start
+NODE_ENV=production SESSION_SECRET="请替换为足够长的随机值" npm start
 ```
 
-端口 8080，前面套 Nginx/Caddy 反代 + SSL。
+端口 8080，前面套 Nginx/Caddy 反代 + SSL。生产模式必须提供 `SESSION_SECRET`，且浏览器只会通过 HTTPS 发送 Session Cookie。

@@ -27,6 +27,10 @@ app.set("trust proxy", 1);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+const isProduction = process.env.NODE_ENV === "production";
+if (isProduction && !process.env.SESSION_SECRET) {
+  throw new Error("SESSION_SECRET is required in production");
+}
 const sessionSecret = process.env.SESSION_SECRET || "elective-system-secret-change-in-production";
 
 const sessionDb = new Database("data/sessions.db");
@@ -37,7 +41,12 @@ app.use(session({
   secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" },
+  cookie: {
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: isProduction,
+  },
 }));
 
 app.use(express.static(path.join(path.dirname(__dirname), "public")));
@@ -58,6 +67,7 @@ function csrfMiddleware(req: Request, res: Response, next: NextFunction) {
   if (!token || token !== req.session.csrfToken) {
     return res.status(403).send("CSRF 验证失败");
   }
+  res.locals.csrfToken = req.session.csrfToken;
   next();
 }
 
