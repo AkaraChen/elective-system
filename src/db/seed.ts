@@ -1,11 +1,18 @@
 import bcryptjs from "bcryptjs";
 import Database from "better-sqlite3";
+import { mkdirSync } from "node:fs";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { sql } from "drizzle-orm";
 import * as schema from "./schema";
 import { users, courses, access, accessUsers, config } from "./schema";
 
 export function seed(d: ReturnType<typeof drizzle>) {
+  const existingUser = d.select({ id: users.id }).from(users).limit(1).get();
+  if (existingUser) {
+    console.log("Seed skipped: existing data preserved");
+    return;
+  }
+
   d.delete(accessUsers).run();
   d.delete(access).run();
   d.delete(schema.selections).run();
@@ -14,8 +21,8 @@ export function seed(d: ReturnType<typeof drizzle>) {
   d.delete(config).run();
   d.run(sql.raw("DELETE FROM sqlite_sequence"));
 
-  const adminHash = bcryptjs.hashSync("123", 10);
-  const studentHash = bcryptjs.hashSync("123", 10);
+  const adminHash = bcryptjs.hashSync("admin123", 10);
+  const studentHash = bcryptjs.hashSync("123456", 10);
 
   d.insert(users).values([
     { username: "admin", password: adminHash, isAdmin: 1 },
@@ -58,13 +65,14 @@ export function seed(d: ReturnType<typeof drizzle>) {
 
   d.insert(config).values([
     { key: "end_time", value: "2026-08-15T23:59:59" },
-    { key: "site_title", value: "随便啥标题" },
+    { key: "site_title", value: "选课系统" },
     { key: "max_selections", value: "0" },
   ]).run();
 
   console.log("Seed done");
 }
 
+mkdirSync("data", { recursive: true });
 const sqlite = new Database("data/db.sqlite");
 sqlite.pragma("journal_mode = WAL");
 const d = drizzle(sqlite, { schema });

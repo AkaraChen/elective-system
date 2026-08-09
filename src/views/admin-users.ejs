@@ -52,28 +52,28 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  document.querySelectorAll('form[action*="_method=PUT"]').forEach(function(form) {
-    form.addEventListener('submit', function(e) {
-      e.preventDefault();
-      var realUrl = form.getAttribute('action').replace('?_method=PUT', '');
+  document.addEventListener('submit', function(e) {
+    var form = e.target.closest('form[action*="_method=PUT"]');
+    if (!form) return;
+    e.preventDefault();
+    var realUrl = form.getAttribute('action').replace('?_method=PUT', '');
 
-      var formData = new FormData(form);
-      var params = new URLSearchParams();
-      formData.forEach(function(v, k) { if (k !== '_method') params.append(k, v); });
+    var formData = new FormData(form);
+    var params = new URLSearchParams();
+    formData.forEach(function(v, k) { if (k !== '_method') params.append(k, v); });
 
-      fetch(realUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: params.toString()
-      }).then(function(res) {
-        if (res.redirected) {
-          window.location.href = res.url;
-        } else if (res.ok) {
-          window.location.reload();
-        } else {
-          res.text().then(function(t) { alert(t); });
-        }
-      });
+    fetch(realUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    }).then(function(res) {
+      if (res.redirected) {
+        window.location.href = res.url;
+      } else if (res.ok) {
+        window.location.reload();
+      } else {
+        res.text().then(function(t) { alert(t); });
+      }
     });
   });
 });
