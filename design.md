@@ -168,15 +168,14 @@ export const config = sqliteTable("config", {
 
 | 账号 | 密码 | 角色 |
 |---|---|---|
-| admin | admin123 | 管理员 |
-| student1 | 123456 | 学生 |
-| student2 | 123456 | 学生 |
+| admin | 123 | 管理员 |
+| student | 123 | 学生 |
 
 课程：Python入门（60 名额，2026-08-10 09:00 开放）、Go语言（40 名额，2026-08-11 09:00 开放）
 
-提前批次：Python入门对 student1、student2 提前到 2026-08-09 12:00 开放
+提前批次：Python入门对 student 提前到 2026-08-09 12:00 开放
 
-配置：`end_time` = 2026-08-15 23:59:59，`site_title` = 选课系统，`max_selections` = 0（0 表示使用默认值 3）
+配置：`end_time` = 2026-08-15 23:59:59，`site_title` = 选课系统，`max_selections` = 1
 
 ## 4. 文件结构
 

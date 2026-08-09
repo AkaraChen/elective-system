@@ -27,7 +27,7 @@ router.get("/admin/courses", requireAdmin, (_req: Request, res: Response) => {
   const siteTitleRow = db.select({ value: config.value }).from(config).where(eq(config.key, "site_title")).get();
   const siteTitle = siteTitleRow?.value || "选课系统";
   const maxSelectionsRow = db.select({ value: config.value }).from(config).where(eq(config.key, "max_selections")).get();
-  const maxSelections = maxSelectionsRow?.value || "0";
+  const maxSelections = maxSelectionsRow?.value || "1";
   const defaultOpenTime = getDefaultOpenTime();
   const closerMonth = defaultOpenTime.substring(5, 7);
   const closerYear = defaultOpenTime.substring(0, 4);
@@ -159,8 +159,8 @@ router.put("/api/admin/config", requireAdmin, (req: Request, res: Response) => {
   if (key === "end_time" && value && isNaN(Date.parse(value))) {
     return res.status(400).send("截止时间格式不正确");
   }
-  if (key === "max_selections" && (isNaN(parseInt(value)) || parseInt(value) < 0)) {
-    return res.status(400).send("最大选课数必须为非负整数");
+  if (key === "max_selections" && (isNaN(parseInt(value)) || parseInt(value) < 1)) {
+    return res.status(400).send("最大选课数必须为正整数");
   }
 
   db.insert(config).values({ key, value: value || "" })

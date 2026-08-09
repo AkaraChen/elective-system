@@ -21,13 +21,12 @@ export function seed(d: ReturnType<typeof drizzle>) {
   d.delete(config).run();
   d.run(sql.raw("DELETE FROM sqlite_sequence"));
 
-  const adminHash = bcryptjs.hashSync("admin123", 10);
-  const studentHash = bcryptjs.hashSync("123456", 10);
+  const adminHash = bcryptjs.hashSync("123", 10);
+  const studentHash = bcryptjs.hashSync("123", 10);
 
   d.insert(users).values([
     { username: "admin", password: adminHash, isAdmin: 1 },
-    { username: "student1", password: studentHash, isAdmin: 0 },
-    { username: "student2", password: studentHash, isAdmin: 0 },
+    { username: "student", password: studentHash, isAdmin: 0 },
   ]).run();
 
   d.insert(courses).values([
@@ -60,13 +59,12 @@ export function seed(d: ReturnType<typeof drizzle>) {
 
   d.insert(accessUsers).values([
     { accessId: 1, userId: 2 },
-    { accessId: 1, userId: 3 },
   ]).run();
 
   d.insert(config).values([
     { key: "end_time", value: "2026-08-15T23:59:59" },
     { key: "site_title", value: "选课系统" },
-    { key: "max_selections", value: "0" },
+    { key: "max_selections", value: "1" },
   ]).run();
 
   console.log("Seed done");
