@@ -1,5 +1,5 @@
 <div id="user-wrapper-<%= u.id %>">
-  <div id="user-row-<%= u.id %>" class="grid grid-cols-1 md:grid-cols-4 gap-x-2 gap-y-1.5 px-6 py-3 items-center hover:bg-gray-50 transition-colors">
+  <div id="user-row-<%= u.id %>" class="grid grid-cols-1 md:grid-cols-5 gap-x-2 gap-y-1.5 px-6 py-3 items-center hover:bg-gray-50 transition-colors">
     <div class="flex justify-between md:block">
       <span class="text-xs text-gray-400 md:hidden">ID</span>
       <span class="text-sm text-gray-500"><%= u.id %></span>
@@ -11,6 +11,10 @@
     <div class="flex justify-between md:block">
       <span class="text-xs text-gray-400 md:hidden">角色</span>
       <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <%= u.isAdmin ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800' %>"><%= u.isAdmin ? "管理员" : "学生" %></span>
+    </div>
+    <div class="flex justify-between md:block">
+      <span class="text-xs text-gray-400 md:hidden"><%= typeof gradeOrder !== 'undefined' && gradeOrder === 'graduation' ? '毕业年份' : '入学年份' %></span>
+      <span class="text-sm text-gray-600"><%= u.year ? u.year : '-' %><% if (!u.isAdmin && u.grade) { %>（<%= u.grade %>年级）<% } %></span>
     </div>
     <div class="flex justify-end md:justify-center gap-1 pt-1 md:pt-0">
       <button onclick="document.getElementById('edit-user-<%= u.id %>').classList.toggle('hidden')" class="text-xs font-medium rounded-lg px-2.5 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">编辑</button>
@@ -25,10 +29,11 @@
   <div id="edit-user-<%= u.id %>" class="hidden border-t border-dashed border-gray-200 px-6 py-4 bg-gray-50/50">
     <form method="POST" action="/api/admin/users/<%= u.id %>?_method=PUT">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
         <%- include('_components/form-field', { label: '用户名', name: 'username', value: u.username }) %>
         <%- include('_components/form-field', { label: '新密码（留空不修改）', name: 'password', type: 'password', placeholder: '留空不修改' }) %>
         <%- include('_components/form-field', { label: '角色', name: 'isAdmin', type: 'select', options: '<option value="0"' + (!u.isAdmin ? ' selected' : '') + '>学生</option><option value="1"' + (u.isAdmin ? ' selected' : '') + '>管理员</option>' }) %>
+        <%- include('_components/form-field', { label: (typeof gradeOrder !== 'undefined' && gradeOrder === 'graduation' ? '毕业年份' : '入学年份'), name: 'year', type: 'number', value: u.year ? String(u.year) : '', placeholder: '例如 2024' }) %>
       </div>
       <div class="flex items-center gap-2 pt-2">
         <button type="submit" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors">保存</button>

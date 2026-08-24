@@ -31,6 +31,11 @@
       <span><%= c.location %></span>
     </div>
     <% } %>
+    <% if (c.allowedGrade) { %>
+    <div class="flex items-center gap-2">
+      <span>允许年级：<%= String(c.allowedGrade).replace(/,/g, '、') %></span>
+    </div>
+    <% } %>
     <% if (c.description) { %>
     <p class="text-xs text-gray-400 pt-1"><%= c.description %></p>
     <% } %>

@@ -5,6 +5,7 @@ import { courses, users, selections } from "../db/schema";
 import { requireAdmin } from "../middleware/auth";
 import { nowLocal } from "../utils/time";
 import { parseRouteId } from "../utils/parse-id";
+import { formatAllowedGrades } from "../utils/grade";
 
 const router = Router();
 
@@ -193,6 +194,8 @@ function renderResult(
     escapeHtml(course.courseTime || "") +
     " &middot; " +
     escapeHtml(course.location || "") +
+    " &middot; 允许年级 " +
+    escapeHtml(formatAllowedGrades(course.allowedGrade)) +
     "</p>";
   h += "</div>";
   h +=

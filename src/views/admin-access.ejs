@@ -5,7 +5,7 @@
   <form method="POST" action="/api/admin/access" class="px-6 pb-4">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <%- include('_components/form-field', { label: '课程', name: 'course_id', type: 'select', required: true, options: '<option value="">-- 选择课程 --</option>' + allCourses.map(function(c){ return '<option value="' + c.id + '">' + c.name + '</option>'; }).join('') }) %>
+      <%- include('_components/form-field', { label: '课程', name: 'course_id', type: 'select', required: true, options: '<option value="">-- 选择课程 --</option>' + allCourses.map(function(c){ return '<option value="' + c.id + '">' + c.name + '（允许年级：' + (c.allowedGrade ? String(c.allowedGrade).replace(/,/g, '、') + '年级' : '不限') + '）</option>'; }).join('') }) %>
       <%- include('_components/form-field', { label: '开放时间', name: 'open_time', type: 'date', required: true }) %>
     </div>
 
@@ -46,6 +46,7 @@
             <div class="flex justify-between md:block">
               <span class="text-xs text-gray-400 md:hidden">课程</span>
               <span class="text-sm font-medium text-gray-900"><%= a.course_name %></span>
+              <span class="block text-xs text-gray-400">允许年级：<%= a.allowedGrade ? String(a.allowedGrade).replace(/,/g, '、') + '年级' : '不限' %></span>
             </div>
             <div class="flex justify-between md:block">
               <span class="text-xs text-gray-400 md:hidden">开放时间</span>

@@ -1,8 +1,25 @@
+<h2 class="text-2xl font-bold text-gray-900 mb-6">全局开始时间</h2>
+
+<form method="POST" action="/api/admin/config?_method=PUT" class="mb-6">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <input type="hidden" name="key" value="start_time">
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+    <input type="date" name="value"
+      value="<%= typeof startTime === 'string' ? startTime.substring(0, 10) : '' %>"
+      required
+      class="rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex-1" />
+    <button type="submit" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors whitespace-nowrap">
+      保存开始时间
+    </button>
+  </div>
+</form>
+<p class="text-sm text-gray-500 -mt-4 mb-6">默认值为当年 9 月 5 日，使用本地时间，选课窗口从此刻起开放。</p>
+
 <h2 class="text-2xl font-bold text-gray-900 mb-6">全局截止时间</h2>
 
 <form method="POST" action="/api/admin/config?_method=PUT" class="mb-6">
   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-  <input type="hidden" name="key" value="end_time"> 
+  <input type="hidden" name="key" value="end_time">
   <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
     <input type="date" name="value"
       value="<%= typeof endTime === 'string' ? endTime.substring(0, 10) : '' %>"
@@ -16,6 +33,33 @@
 </form>
 
 <p class="text-sm text-gray-500 -mt-4 mb-6">最近开课时间：<%= nextOpenDateLabel %></p>
+
+<h2 class="text-2xl font-bold text-gray-900 mb-6">年级顺序</h2>
+
+<form method="POST" action="/api/admin/config?_method=PUT" class="mb-6">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <input type="hidden" name="key" value="grade_order">
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+    <div class="flex items-center gap-6 flex-1">
+      <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+        <input type="radio" name="value" value="enrollment"
+          <%= gradeOrder === 'enrollment' ? 'checked' : '' %>
+          class="text-blue-600 focus:ring-blue-500" />
+        入学年份
+      </label>
+      <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+        <input type="radio" name="value" value="graduation"
+          <%= gradeOrder === 'graduation' ? 'checked' : '' %>
+          class="text-blue-600 focus:ring-blue-500" />
+        毕业年份
+      </label>
+    </div>
+    <button type="submit" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors whitespace-nowrap">
+      保存年级顺序
+    </button>
+  </div>
+</form>
+<p class="text-sm text-gray-500 -mt-4 mb-6">用于根据学生年份计算当前年级，再与课程「允许年级」比对。</p>
 
 <h2 class="text-2xl font-bold text-gray-900 mb-6">最大报课数</h2>
 
@@ -64,7 +108,8 @@
       <%- include('_components/form-field', { label: '上课时间', name: 'courseTime' }) %>
       <%- include('_components/form-field', { label: '上课地点', name: 'location' }) %>
       <%- include('_components/form-field', { label: '总名额', name: 'totalSeats', type: 'number', value: '30', required: true }) %>
-      <%- include('_components/form-field', { label: '默认开放时间', name: 'openTime', type: 'date', value: typeof defaultOpenTime === 'string' ? defaultOpenTime : '', required: true }) %>
+      <%- include('_components/form-field', { label: '默认开放时间', name: 'openTime', type: 'date', value: typeof defaultOpenTime === 'string' ? defaultOpenTime.substring(0, 10) : '', required: true }) %>
+      <%- include('_components/form-field', { label: '允许年级', name: 'allowedGrade', placeholder: '例如 1,3；留空表示不限' }) %>
     </div>
     <%- include('_components/form-field', { label: '课程描述', name: 'description', type: 'textarea' }) %>
     <button type="submit" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
@@ -103,6 +148,10 @@
             <span class="text-sm text-gray-600"><%= c.openTime ? c.openTime.substring(0, 10) : "-" %></span>
           </div>
           <div class="flex justify-between">
+            <span class="text-xs text-gray-400">允许年级</span>
+            <span class="text-sm text-gray-600"><%= c.allowedGrade ? String(c.allowedGrade).replace(/,/g, '、') + '年级' : '不限' %></span>
+          </div>
+          <div class="flex justify-between">
             <span class="text-xs text-gray-400">已选/总</span>
             <span class="text-sm font-medium <%= (c.selected_count || 0) >= c.totalSeats ? 'text-red-600' : 'text-green-600' %>"><%= c.selected_count || 0 %> / <%= c.totalSeats %></span>
           </div>
@@ -130,6 +179,7 @@
               <%- include('_components/form-field', { label: '上课地点', name: 'location', value: c.location || '' }) %>
               <%- include('_components/form-field', { label: '总名额', name: 'totalSeats', type: 'number', value: String(c.totalSeats), required: true }) %>
               <%- include('_components/form-field', { label: '默认开放时间', name: 'openTime', type: 'date', value: c.openTime ? c.openTime.substring(0, 10) : '' }) %>
+              <%- include('_components/form-field', { label: '允许年级', name: 'allowedGrade', value: c.allowedGrade || '', placeholder: '例如 1,3；留空表示不限' }) %>
             </div>
             <%- include('_components/form-field', { label: '课程描述', name: 'description', type: 'textarea', value: c.description || '' }) %>
             <div class="flex items-center justify-between gap-2 pt-1">
