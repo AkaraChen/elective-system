@@ -113,6 +113,11 @@
       }, 3500);
     };
 
+    document.body.addEventListener('toast', function(evt) {
+      var detail = evt.detail || {};
+      if (detail.message) showToast(detail.message, detail.type || 'info');
+    });
+
     document.body.addEventListener('htmx:configRequest', function(evt) {
       var token = document.querySelector('meta[name="csrf-token"]');
       if (token) evt.detail.headers['x-csrf-token'] = token.content;
