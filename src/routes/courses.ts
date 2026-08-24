@@ -5,9 +5,9 @@ import { courses, access, accessUsers, selections, users } from "../db/schema";
 import { requireAuth } from "../middleware/auth";
 import { asEndInstant, nowLocal } from "../utils/time";
 import { parseRouteId } from "../utils/parse-id";
-import { isGradeAllowed, studentGrade } from "../utils/grade";
+import { isGradeAllowed, studentCohort } from "../utils/grade";
 import { effectiveOpenTime, resolveCourseState } from "../utils/course-state";
-import { readConfig, readEndTime, readGradeOrder, readStartTime } from "../utils/app-config";
+import { readConfig, readEndTime, readStartTime } from "../utils/app-config";
 
 const router = Router();
 
@@ -38,8 +38,7 @@ router.get("/courses", requireAuth, (req: Request, res: Response) => {
   const userId = req.session.userId!;
   const now = nowLocal();
   const user = db.select().from(users).where(eq(users.id, userId)).get();
-  const gradeOrder = readGradeOrder(db);
-  const grade = studentGrade(user?.year, gradeOrder);
+  const grade = studentCohort(user?.year);
   const startTime = readStartTime(db);
   const endTime = readEndTime(db) || now;
 
@@ -101,8 +100,7 @@ router.post("/api/courses/:id/select", requireAuth, (req: Request, res: Response
       }
 
       const user = tx.select().from(users).where(eq(users.id, userId)).get();
-      const gradeOrder = readGradeOrder(tx);
-      const grade = studentGrade(user?.year, gradeOrder);
+      const grade = studentCohort(user?.year);
       if (!isGradeAllowed(grade, course.allowedGrade)) {
         throw new Error("当前年级不可选择该课程");
       }

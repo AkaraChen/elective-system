@@ -14,7 +14,7 @@
     </div>
     <div class="flex justify-between md:block">
       <span class="text-xs text-gray-400 md:hidden"><%= typeof gradeOrder !== 'undefined' && gradeOrder === 'graduation' ? '毕业年份' : '入学年份' %></span>
-      <span class="text-sm text-gray-600"><%= u.year ? u.year : '-' %><% if (!u.isAdmin && u.grade) { %>（<%= u.grade %>年级）<% } %></span>
+      <span class="text-sm text-gray-600"><%= u.year ? u.year + '级' : '-' %></span>
     </div>
     <div class="flex justify-end md:justify-center gap-1 pt-1 md:pt-0">
       <button onclick="document.getElementById('edit-user-<%= u.id %>').classList.toggle('hidden')" class="text-xs font-medium rounded-lg px-2.5 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">编辑</button>
@@ -33,7 +33,7 @@
         <%- include('_components/form-field', { label: '用户名', name: 'username', value: u.username }) %>
         <%- include('_components/form-field', { label: '新密码（留空不修改）', name: 'password', type: 'password', placeholder: '留空不修改' }) %>
         <%- include('_components/form-field', { label: '角色', name: 'isAdmin', type: 'select', options: '<option value="0"' + (!u.isAdmin ? ' selected' : '') + '>学生</option><option value="1"' + (u.isAdmin ? ' selected' : '') + '>管理员</option>' }) %>
-        <%- include('_components/form-field', { label: (typeof gradeOrder !== 'undefined' && gradeOrder === 'graduation' ? '毕业年份' : '入学年份'), name: 'year', type: 'number', value: u.year ? String(u.year) : '', placeholder: '例如 2024' }) %>
+        <%- include('_components/form-field', { label: (typeof gradeOrder !== 'undefined' && gradeOrder === 'graduation' ? '毕业年份' : '入学年份'), name: 'year', type: 'number', value: u.year ? String(u.year) : '', placeholder: '例如 2026' }) %>
       </div>
       <div class="flex items-center gap-2 pt-2">
         <button type="submit" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors">保存</button>

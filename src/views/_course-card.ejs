@@ -33,7 +33,7 @@
     <% } %>
     <% if (c.allowedGrade) { %>
     <div class="flex items-center gap-2">
-      <span>允许年级：<%= String(c.allowedGrade).replace(/,/g, '、') %></span>
+      <span>允许年级：<%= String(c.allowedGrade).split(',').map(function(g) { return g + '级'; }).join('、') %></span>
     </div>
     <% } %>
     <% if (c.description) { %>

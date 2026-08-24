@@ -40,7 +40,7 @@ export function seed(d: ReturnType<typeof drizzle>) {
       totalSeats: 60,
       availableSeats: 60,
       openTime: "2026-08-01T00:00:00",
-      allowedGrade: "1,2,3",
+      allowedGrade: "2024,2025,2026",
     },
     {
       name: "Go语言",
@@ -51,7 +51,7 @@ export function seed(d: ReturnType<typeof drizzle>) {
       totalSeats: 40,
       availableSeats: 40,
       openTime: "2026-08-30T00:00:00",
-      allowedGrade: "2,3",
+      allowedGrade: "2025,2026",
     },
   ]).run();
 

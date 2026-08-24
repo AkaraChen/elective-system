@@ -8,7 +8,7 @@
       <%- include('_components/form-field', { label: '用户名', name: 'username', required: true }) %>
       <%- include('_components/form-field', { label: '密码', name: 'password', type: 'password', required: true }) %>
       <%- include('_components/form-field', { label: '角色', name: 'isAdmin', type: 'select', required: true, options: '<option value="0">学生</option><option value="1">管理员</option>' }) %>
-      <%- include('_components/form-field', { label: gradeOrder === 'graduation' ? '毕业年份' : '入学年份', name: 'year', type: 'number', placeholder: '例如 2024' }) %>
+      <%- include('_components/form-field', { label: gradeOrder === 'graduation' ? '毕业年份' : '入学年份', name: 'year', type: 'number', placeholder: '例如 2026' }) %>
     </div>
     <button type="submit" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors mt-2">创建用户</button>
   </form>

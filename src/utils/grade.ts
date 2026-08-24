@@ -1,27 +1,11 @@
-export const DEFAULT_PROGRAM_YEARS = 3;
-
 export type GradeOrder = "enrollment" | "graduation";
 
 export function isGradeOrder(value: string): value is GradeOrder {
   return value === "enrollment" || value === "graduation";
 }
 
-export function academicYear(now: Date = new Date()): number {
-  return now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
-}
-
-export function studentGrade(
-  year: number | null | undefined,
-  order: GradeOrder,
-  now: Date = new Date(),
-  programYears: number = DEFAULT_PROGRAM_YEARS,
-): number | null {
-  if (year == null || !Number.isInteger(year)) return null;
-  const ay = academicYear(now);
-  const enrollmentYear = order === "enrollment" ? year : year - programYears;
-  const grade = ay - enrollmentYear + 1;
-  if (grade < 1 || grade > programYears + 2) return null;
-  return grade;
+export function studentCohort(year: number | null | undefined): number | null {
+  return parseYear(year);
 }
 
 export function parseAllowedGrades(raw: string | null | undefined): number[] | null {
@@ -32,8 +16,9 @@ export function parseAllowedGrades(raw: string | null | undefined): number[] | n
   if (parts.length === 0) return null;
   const grades: number[] = [];
   for (const part of parts) {
+    if (!/^\d{4}$/.test(part)) return null;
     const n = Number(part);
-    if (!Number.isInteger(n) || n < 1) return null;
+    if (n < 1000) return null;
     if (!grades.includes(n)) grades.push(n);
   }
   grades.sort((a, b) => a - b);
@@ -47,22 +32,25 @@ export function serializeAllowedGrades(grades: number[]): string {
 export function formatAllowedGrades(raw: string | null | undefined): string {
   const grades = parseAllowedGrades(raw);
   if (!grades) return "不限";
-  return grades.join("、") + "年级";
+  return grades.map((grade) => `${grade}级`).join("、");
 }
 
 export function isGradeAllowed(
   grade: number | null,
   allowedRaw: string | null | undefined,
 ): boolean {
+  if (allowedRaw == null || String(allowedRaw).trim() === "") return true;
   const allowed = parseAllowedGrades(allowedRaw);
-  if (!allowed) return true;
+  if (!allowed) return false;
   if (grade == null) return false;
   return allowed.includes(grade);
 }
 
 export function parseYear(raw: unknown): number | null {
   if (raw == null || raw === "") return null;
-  const n = typeof raw === "number" ? raw : parseInt(String(raw), 10);
-  if (!Number.isInteger(n) || n < 1990 || n > 2100) return null;
+  const value = typeof raw === "number" ? String(raw) : String(raw).trim();
+  if (!/^\d{4}$/.test(value)) return null;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 1000) return null;
   return n;
 }

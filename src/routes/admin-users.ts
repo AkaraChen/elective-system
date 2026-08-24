@@ -5,7 +5,7 @@ import { db } from "../db/index";
 import { users, selections, accessUsers } from "../db/schema";
 import { requireAdmin } from "../middleware/auth";
 import { parseRouteId } from "../utils/parse-id";
-import { parseYear, studentGrade } from "../utils/grade";
+import { parseYear } from "../utils/grade";
 import { readGradeOrder } from "../utils/app-config";
 
 const router = Router();
@@ -36,8 +36,7 @@ router.get("/api/admin/users/search", requireAdmin, (req: Request, res: Response
   }
 
   const gradeOrder = readGradeOrder(db);
-  const grade = studentGrade(user.year, gradeOrder);
-  const u = { ...user, isAdmin: user.isAdmin as unknown as number, grade };
+  const u = { ...user, isAdmin: user.isAdmin as unknown as number };
   res.render("_user-row", { u, gradeOrder, layout: false });
 });
 
@@ -52,7 +51,7 @@ router.post("/api/admin/users", requireAdmin, (req: Request, res: Response) => {
   const asAdmin = isAdmin === "1" || isAdmin === 1 ? 1 : 0;
   const year = asAdmin ? null : parseYear(req.body.year);
   if (!asAdmin && req.body.year && year === null) {
-    return res.status(400).send("年份必须是 1990–2100 的整数");
+    return res.status(400).send("年份必须是4位数，例如2026");
   }
 
   const hash = bcryptjs.hashSync(password, 10);
@@ -109,7 +108,7 @@ router.put("/api/admin/users/:id", requireAdmin, (req: Request, res: Response) =
   if (year !== undefined) {
     const parsed = year === "" ? null : parseYear(year);
     if (year !== "" && parsed === null) {
-      return res.status(400).send("年份必须是 1990–2100 的整数");
+      return res.status(400).send("年份必须是4位数，例如2026");
     }
     updateData.year = parsed;
   }

@@ -14,6 +14,7 @@ import {
 import { parseRouteId } from "../utils/parse-id";
 import { isGradeOrder, parseAllowedGrades, serializeAllowedGrades } from "../utils/grade";
 import { readGradeOrder } from "../utils/app-config";
+import { removeIneligibleSelections } from "../services/course-grade";
 
 const router = Router();
 
@@ -33,9 +34,11 @@ const ALLOWED_CONFIG_KEYS = ["end_time", "start_time", "site_title", "max_select
 function parseAllowedGradeInput(raw: unknown): { ok: true; value: string | null } | { ok: false; error: string } {
   if (raw == null || String(raw).trim() === "") return { ok: true, value: null };
   const grades = parseAllowedGrades(String(raw));
-  if (!grades) return { ok: false, error: "允许年级格式不正确，请填写正整数，多个年级用逗号分隔，例如 1,3" };
+  if (!grades) return { ok: false, error: "允许年级格式不正确，请填写4位年份，多个年级用逗号分隔，例如 2024,2026" };
   return { ok: true, value: serializeAllowedGrades(grades) };
 }
+
+class CourseCapacityError extends Error {}
 
 router.get("/admin/courses", requireAdmin, (_req: Request, res: Response) => {
   const endTimeRow = db.select({ value: config.value }).from(config).where(eq(config.key, "end_time")).get();
@@ -139,37 +142,53 @@ router.put("/api/admin/courses/:id", requireAdmin, (req: Request, res: Response)
     if (!allowed.ok) return res.status(400).send(allowed.error);
     updateData.allowedGrade = allowed.value;
   }
+  let parsedTotalSeats: number | undefined;
   if (totalSeats !== undefined) {
-    const seats = parseInt(totalSeats);
-    if (isNaN(seats) || seats < 1) {
+    parsedTotalSeats = parseInt(totalSeats);
+    if (isNaN(parsedTotalSeats) || parsedTotalSeats < 1) {
       return res.status(400).send("总名额必须为大于0的整数");
     }
-    const selectedCount = db
-      .select({ count: count() })
-      .from(selections)
-      .where(eq(selections.courseId, courseId))
-      .get()?.count ?? 0;
-    if (seats < selectedCount) {
-      return res.status(400).send(`总名额不能小于已选人数（${selectedCount}）`);
+    updateData.totalSeats = parsedTotalSeats;
+  }
+
+  const shouldResetSeats = resetSeats === "true" || resetSeats === "1";
+  let removedCount = 0;
+
+  if (Object.keys(updateData).length > 0 || shouldResetSeats) {
+    try {
+      db.transaction((tx) => {
+        let selectedCount = tx
+          .select({ count: count() })
+          .from(selections)
+          .where(eq(selections.courseId, courseId))
+          .get()?.count ?? 0;
+
+        if (allowedGrade !== undefined) {
+          const reconciled = removeIneligibleSelections(tx, courseId, updateData.allowedGrade);
+          removedCount = reconciled.removedCount;
+          selectedCount = reconciled.selectedCount;
+        }
+
+        const effectiveTotalSeats = parsedTotalSeats ?? existing.totalSeats;
+        if (effectiveTotalSeats < selectedCount) {
+          throw new CourseCapacityError(`总名额不能小于已选人数（${selectedCount}）`);
+        }
+
+        if (parsedTotalSeats !== undefined || shouldResetSeats || removedCount > 0) {
+          updateData.availableSeats = effectiveTotalSeats - selectedCount;
+        }
+
+        tx.update(courses).set(updateData).where(eq(courses.id, courseId)).run();
+      });
+    } catch (error) {
+      if (error instanceof CourseCapacityError) {
+        return res.status(400).send(error.message);
+      }
+      throw error;
     }
-    updateData.totalSeats = seats;
-    updateData.availableSeats = seats - selectedCount;
   }
 
-  if (resetSeats === "true" || resetSeats === "1") {
-    const newTotal = totalSeats !== undefined ? parseInt(totalSeats) : existing.totalSeats;
-    const selectedCount = db
-      .select({ count: count() })
-      .from(selections)
-      .where(eq(selections.courseId, courseId))
-      .get()?.count ?? 0;
-    updateData.availableSeats = newTotal - selectedCount;
-  }
-
-  if (Object.keys(updateData).length > 0) {
-    db.update(courses).set(updateData).where(eq(courses.id, courseId)).run();
-  }
-
+  if (removedCount > 0) res.set("X-Removed-Selections", String(removedCount));
   res.redirect("/admin/courses");
 });
 
