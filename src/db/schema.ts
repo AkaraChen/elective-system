@@ -5,6 +5,7 @@ export const users = sqliteTable("users", {
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   isAdmin: integer("is_admin").notNull().default(0),
+  year: integer("year"),
 });
 
 export const courses = sqliteTable("courses", {
@@ -17,6 +18,7 @@ export const courses = sqliteTable("courses", {
   totalSeats: integer("total_seats").notNull(),
   availableSeats: integer("available_seats").notNull(),
   openTime: text("open_time").notNull(),
+  allowedGrade: text("allowed_grade"),
 });
 
 export const access = sqliteTable("access", {

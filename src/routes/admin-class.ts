@@ -5,6 +5,8 @@ import { courses, users, selections } from "../db/schema";
 import { requireAdmin } from "../middleware/auth";
 import { nowLocal } from "../utils/time";
 import { parseRouteId } from "../utils/parse-id";
+import { formatAllowedGrades } from "../utils/grade";
+import { asciiHeaderJson } from "../utils/hx-trigger";
 
 const router = Router();
 
@@ -110,9 +112,12 @@ router.put(
     });
 
     if (invalidIds.length > 0) {
-      res.set("HX-Trigger", JSON.stringify({
-        toast: { message: `以下ID不存在，已忽略：${invalidIds.join("、")}`, type: "warning" }
-      }));
+      res.set(
+        "HX-Trigger",
+        asciiHeaderJson({
+          toast: { message: `以下ID不存在，已忽略：${invalidIds.join("、")}`, type: "warning" },
+        }),
+      );
     }
 
     const updatedCourse = db
@@ -193,6 +198,8 @@ function renderResult(
     escapeHtml(course.courseTime || "") +
     " &middot; " +
     escapeHtml(course.location || "") +
+    " &middot; 允许年级 " +
+    escapeHtml(formatAllowedGrades(course.allowedGrade)) +
     "</p>";
   h += "</div>";
   h +=

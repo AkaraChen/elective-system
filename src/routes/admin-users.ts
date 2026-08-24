@@ -5,15 +5,19 @@ import { db } from "../db/index";
 import { users, selections, accessUsers } from "../db/schema";
 import { requireAdmin } from "../middleware/auth";
 import { parseRouteId } from "../utils/parse-id";
+import { parseYear } from "../utils/grade";
+import { readGradeOrder } from "../utils/app-config";
 
 const router = Router();
 
 router.get("/admin/users", requireAdmin, (_req: Request, res: Response) => {
   const admins = db.select().from(users).where(eq(users.isAdmin, 1)).orderBy(users.id).all();
+  const gradeOrder = readGradeOrder(db);
 
   res.render("admin-users", {
     title: "用户管理",
     admins,
+    gradeOrder,
   });
 });
 
@@ -31,8 +35,9 @@ router.get("/api/admin/users/search", requireAdmin, (req: Request, res: Response
     return res.send(`<div class="px-6 py-4 text-sm text-red-500">未找到学生 "${username}"</div>`);
   }
 
+  const gradeOrder = readGradeOrder(db);
   const u = { ...user, isAdmin: user.isAdmin as unknown as number };
-  res.render("_user-row", { u, layout: false });
+  res.render("_user-row", { u, gradeOrder, layout: false });
 });
 
 router.post("/api/admin/users", requireAdmin, (req: Request, res: Response) => {
@@ -43,12 +48,19 @@ router.post("/api/admin/users", requireAdmin, (req: Request, res: Response) => {
   const existing = db.select().from(users).where(eq(users.username, username)).get();
   if (existing) return res.redirect("/admin/users");
 
+  const asAdmin = isAdmin === "1" || isAdmin === 1 ? 1 : 0;
+  const year = asAdmin ? null : parseYear(req.body.year);
+  if (!asAdmin && req.body.year && year === null) {
+    return res.status(400).send("年份必须是4位数，例如2026");
+  }
+
   const hash = bcryptjs.hashSync(password, 10);
 
   db.insert(users).values({
     username,
     password: hash,
-    isAdmin: isAdmin === "1" || isAdmin === 1 ? 1 : 0,
+    isAdmin: asAdmin,
+    year,
   }).run();
 
   res.redirect("/admin/users");
@@ -57,7 +69,7 @@ router.post("/api/admin/users", requireAdmin, (req: Request, res: Response) => {
 router.put("/api/admin/users/:id", requireAdmin, (req: Request, res: Response) => {
   const userId = parseRouteId(req.params.id);
   if (userId === null) return res.status(400).send("无效的用户ID");
-  const { username, password, isAdmin } = req.body;
+  const { username, password, isAdmin, year } = req.body;
 
   const existing = db.select().from(users).where(eq(users.id, userId)).get();
   if (!existing) return res.status(404).send("用户不存在");
@@ -92,6 +104,13 @@ router.put("/api/admin/users/:id", requireAdmin, (req: Request, res: Response) =
   }
   if (password !== undefined && password !== "") {
     updateData.password = bcryptjs.hashSync(password, 10);
+  }
+  if (year !== undefined) {
+    const parsed = year === "" ? null : parseYear(year);
+    if (year !== "" && parsed === null) {
+      return res.status(400).send("年份必须是4位数，例如2026");
+    }
+    updateData.year = parsed;
   }
 
   if (Object.keys(updateData).length > 0) {

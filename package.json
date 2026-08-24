@@ -12,7 +12,8 @@
     "db:push": "npm run db:prepare && drizzle-kit push",
     "db:seed": "tsx src/db/seed.ts",
     "db:init": "npm run db:push && npm run db:seed",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test test/*.test.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4",

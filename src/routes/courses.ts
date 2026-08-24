@@ -1,10 +1,13 @@
 import { Router, Request, Response } from "express";
 import { eq, and, count } from "drizzle-orm";
 import { db } from "../db/index";
-import { courses, access, accessUsers, selections, config } from "../db/schema";
+import { courses, access, accessUsers, selections, users } from "../db/schema";
 import { requireAuth } from "../middleware/auth";
-import { nowLocal } from "../utils/time";
+import { asEndInstant, nowLocal } from "../utils/time";
 import { parseRouteId } from "../utils/parse-id";
+import { isGradeAllowed, studentCohort } from "../utils/grade";
+import { effectiveOpenTime, resolveCourseState } from "../utils/course-state";
+import { readConfig, readEndTime, readStartTime } from "../utils/app-config";
 
 const router = Router();
 
@@ -25,8 +28,7 @@ function getOpenTimeForUser(client: any, userId: number, courseId: number): stri
 const DEFAULT_MAX_SELECTIONS = 3;
 
 function getMaxSelections(): number {
-  const row = db.select({ value: config.value }).from(config).where(eq(config.key, "max_selections")).get();
-  const v = parseInt(row?.value || "");
+  const v = parseInt(readConfig(db, "max_selections") || "");
   return (!isNaN(v) && v > 0) ? v : DEFAULT_MAX_SELECTIONS;
 }
 
@@ -35,9 +37,10 @@ router.get("/courses", requireAuth, (req: Request, res: Response) => {
 
   const userId = req.session.userId!;
   const now = nowLocal();
-
-  const endTimeRow = db.select({ value: config.value }).from(config).where(eq(config.key, "end_time")).get();
-  const endTime = endTimeRow?.value || now;
+  const user = db.select().from(users).where(eq(users.id, userId)).get();
+  const grade = studentCohort(user?.year);
+  const startTime = readStartTime(db);
+  const endTime = readEndTime(db) || now;
 
   const allCourses = db.select().from(courses).all();
 
@@ -48,23 +51,22 @@ router.get("/courses", requireAuth, (req: Request, res: Response) => {
     .all();
   const selectedIds = new Set(selectedRows.map((r) => r.courseId));
 
-  const courseList = allCourses.map((c) => {
-    const opentime = getOpenTimeForUser(db, userId, c.id);
-    const isSelected = selectedIds.has(c.id);
-
-    let state = "open";
-    if (isSelected) {
-      state = "selected";
-    } else if (now >= endTime) {
-      state = "closed";
-    } else if (c.availableSeats <= 0) {
-      state = "full";
-    } else if (now < opentime) {
-      state = "waiting";
-    }
-
-    return { ...c, opentime, state, endtime: endTime };
-  });
+  const courseList = allCourses
+    .filter((c) => selectedIds.has(c.id) || isGradeAllowed(grade, c.allowedGrade))
+    .map((c) => {
+      const courseOpen = getOpenTimeForUser(db, userId, c.id);
+      const opentime = effectiveOpenTime(courseOpen, startTime);
+      const isSelected = selectedIds.has(c.id);
+      const state = resolveCourseState({
+        now,
+        openTime: courseOpen,
+        startTime,
+        endTime,
+        selected: isSelected,
+        availableSeats: c.availableSeats,
+      });
+      return { ...c, opentime, state, endtime: endTime };
+    });
 
   res.render("courses", { courses: courseList, now, endTime });
 });
@@ -97,13 +99,19 @@ router.post("/api/courses/:id/select", requireAuth, (req: Request, res: Response
         throw new Error(`最多只能选 ${maxSelections} 门课`);
       }
 
+      const user = tx.select().from(users).where(eq(users.id, userId)).get();
+      const grade = studentCohort(user?.year);
+      if (!isGradeAllowed(grade, course.allowedGrade)) {
+        throw new Error("当前年级不可选择该课程");
+      }
+
       const opentime = getOpenTimeForUser(tx, userId, courseId);
+      const startTime = readStartTime(tx);
+      const endTime = readEndTime(tx);
+      const effectiveOpen = effectiveOpenTime(opentime, startTime);
 
-      const endTimeRow = tx.select({ value: config.value }).from(config).where(eq(config.key, "end_time")).get();
-      const endTime = endTimeRow?.value;
-
-      if (now < opentime) throw new Error("尚未到开放时间");
-      if (endTime && now >= endTime) throw new Error("选课已截止");
+      if (now < effectiveOpen) throw new Error("尚未到开放时间");
+      if (endTime && now >= asEndInstant(endTime)) throw new Error("选课已截止");
       if (course.availableSeats <= 0) throw new Error("没有剩余名额");
 
       const existing = tx
@@ -124,14 +132,13 @@ router.post("/api/courses/:id/select", requireAuth, (req: Request, res: Response
     });
 
     const course = db.select().from(courses).where(eq(courses.id, courseId)).get()!;
-    const opentime = getOpenTimeForUser(db, userId, courseId);
-
-    const endTimeRow2 = db.select({ value: config.value }).from(config).where(eq(config.key, "end_time")).get();
-    const endTimeStr = endTimeRow2?.value || "";
+    const courseOpen = getOpenTimeForUser(db, userId, courseId);
+    const startTime = readStartTime(db);
+    const endTimeStr = readEndTime(db) || "";
 
     const c = {
       ...course,
-      opentime,
+      opentime: effectiveOpenTime(courseOpen, startTime),
       state: "selected",
       endtime: endTimeStr,
     };
@@ -153,9 +160,8 @@ router.post("/api/courses/:id/drop", requireAuth, (req: Request, res: Response) 
 
   try {
     db.transaction((tx) => {
-      const endTimeRow = tx.select({ value: config.value }).from(config).where(eq(config.key, "end_time")).get();
-      const endTime = endTimeRow?.value;
-      if (endTime && now >= endTime) throw new Error("选课已截止，无法退课");
+      const endTime = readEndTime(tx);
+      if (endTime && now >= asEndInstant(endTime)) throw new Error("选课已截止，无法退课");
 
       const sel = tx
         .select()
@@ -176,18 +182,18 @@ router.post("/api/courses/:id/drop", requireAuth, (req: Request, res: Response) 
     });
 
     const course = db.select().from(courses).where(eq(courses.id, courseId)).get()!;
-    const opentime = getOpenTimeForUser(db, userId, courseId);
-    const endTimeRow = db.select({ value: config.value }).from(config).where(eq(config.key, "end_time")).get();
-    const endTime = endTimeRow?.value || "";
-
-    let state = "open";
-    if (now >= endTime) {
-      state = "closed";
-    } else if (now < opentime) {
-      state = "waiting";
-    } else if (course.availableSeats <= 0) {
-      state = "full";
-    }
+    const courseOpen = getOpenTimeForUser(db, userId, courseId);
+    const startTime = readStartTime(db);
+    const endTime = readEndTime(db) || "";
+    const opentime = effectiveOpenTime(courseOpen, startTime);
+    const state = resolveCourseState({
+      now,
+      openTime: courseOpen,
+      startTime,
+      endTime,
+      selected: false,
+      availableSeats: course.availableSeats,
+    });
 
     const c = { ...course, opentime, state, endtime: endTime };
 
