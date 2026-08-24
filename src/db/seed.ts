@@ -5,6 +5,7 @@ import { drizzle } from "drizzle-orm/better-sqlite3";
 import { sql } from "drizzle-orm";
 import * as schema from "./schema";
 import { users, courses, access, accessUsers, config } from "./schema";
+import { migrate } from "./migrate";
 
 export function seed(d: ReturnType<typeof drizzle>) {
   const existingUser = d.select({ id: users.id }).from(users).limit(1).get();
@@ -26,7 +27,7 @@ export function seed(d: ReturnType<typeof drizzle>) {
 
   d.insert(users).values([
     { username: "admin", password: adminHash, isAdmin: 1 },
-    { username: "student", password: studentHash, isAdmin: 0 },
+    { username: "student", password: studentHash, isAdmin: 0, year: 2024 },
   ]).run();
 
   d.insert(courses).values([
@@ -39,6 +40,7 @@ export function seed(d: ReturnType<typeof drizzle>) {
       totalSeats: 60,
       availableSeats: 60,
       openTime: "2026-08-01T00:00:00",
+      allowedGrade: "1,2,3",
     },
     {
       name: "Go语言",
@@ -49,6 +51,7 @@ export function seed(d: ReturnType<typeof drizzle>) {
       totalSeats: 40,
       availableSeats: 40,
       openTime: "2026-08-30T00:00:00",
+      allowedGrade: "2,3",
     },
   ]).run();
 
@@ -63,6 +66,8 @@ export function seed(d: ReturnType<typeof drizzle>) {
 
   d.insert(config).values([
     { key: "end_time", value: "2026-08-15T23:59:59" },
+    { key: "start_time", value: "2026-09-05T00:00:00" },
+    { key: "grade_order", value: "enrollment" },
     { key: "site_title", value: "选课系统" },
     { key: "max_selections", value: "1" },
   ]).run();
@@ -73,6 +78,7 @@ export function seed(d: ReturnType<typeof drizzle>) {
 mkdirSync("data", { recursive: true });
 const sqlite = new Database("data/db.sqlite");
 sqlite.pragma("journal_mode = WAL");
+migrate(sqlite);
 const d = drizzle(sqlite, { schema });
 seed(d);
 sqlite.close();
