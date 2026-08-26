@@ -3,9 +3,10 @@ import { sqliteTable, integer, text, primaryKey, unique } from "drizzle-orm/sqli
 export const users = sqliteTable("users", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   username: text("username").notNull().unique(),
+  nickname: text("nickname").notNull().default(""),
   password: text("password").notNull(),
   isAdmin: integer("is_admin").notNull().default(0),
-  year: integer("year"),
+  grade: integer("grade"),
 });
 
 export const courses = sqliteTable("courses", {
@@ -18,7 +19,7 @@ export const courses = sqliteTable("courses", {
   totalSeats: integer("total_seats").notNull(),
   availableSeats: integer("available_seats").notNull(),
   openTime: text("open_time").notNull(),
-  allowedGrade: text("allowed_grade"),
+  allowedGrades: text("allowed_grades"),
 });
 
 export const access = sqliteTable("access", {

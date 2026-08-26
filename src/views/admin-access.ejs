@@ -5,7 +5,15 @@
   <form method="POST" action="/api/admin/access" class="px-6 pb-4">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <%- include('_components/form-field', { label: '课程', name: 'course_id', type: 'select', required: true, options: '<option value="">-- 选择课程 --</option>' + allCourses.map(function(c){ return '<option value="' + c.id + '">' + c.name + '（允许年级：' + (c.allowedGrade ? String(c.allowedGrade).split(',').map(function(g){ return g + '级'; }).join('、') : '不限') + '）</option>'; }).join('') }) %>
+      <div class="mb-4">
+        <label for="field-course_id" class="block text-sm font-medium text-gray-700 mb-1">课程</label>
+        <select id="field-course_id" name="course_id" required class="w-full rounded-lg border border-gray-300 focus:ring-blue-500 px-3 py-2 text-sm shadow-sm focus:outline-none">
+          <option value="">-- 选择课程 --</option>
+          <% allCourses.forEach(function(c) { %>
+            <option value="<%= c.id %>"><%= c.name %>（允许年级：<%= c.allowedGrades ? String(c.allowedGrades).split(',').map(function(g){ return g + '级'; }).join('、') : '不限' %>）</option>
+          <% }); %>
+        </select>
+      </div>
       <%- include('_components/form-field', { label: '开放时间', name: 'open_time', type: 'date', required: true }) %>
     </div>
 
@@ -46,7 +54,7 @@
             <div class="flex justify-between md:block">
               <span class="text-xs text-gray-400 md:hidden">课程</span>
               <span class="text-sm font-medium text-gray-900"><%= a.course_name %></span>
-              <span class="block text-xs text-gray-400">允许年级：<%= a.allowedGrade ? String(a.allowedGrade).split(',').map(function(g) { return g + '级'; }).join('、') : '不限' %></span>
+              <span class="block text-xs text-gray-400">允许年级：<%= a.allowedGrades ? String(a.allowedGrades).split(',').map(function(g) { return g + '级'; }).join('、') : '不限' %></span>
             </div>
             <div class="flex justify-between md:block">
               <span class="text-xs text-gray-400 md:hidden">开放时间</span>
@@ -79,7 +87,7 @@
                 <% } else { %>
                   <% existing.forEach(function(s) { %>
                     <span class="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs font-medium text-blue-700" data-user-id="<%= s.userId %>">
-                      <%= s.username %>
+                      <%= s.nickname %>（<%= s.username %>）
                       <button type="button" onclick="removeStudentBadge(this)" class="text-blue-400 hover:text-red-500 hover:bg-red-50 transition-colors mx-0.5" title="移除">×</button>
                     </span>
                   <% }); %>
@@ -112,9 +120,9 @@
 
 <script>
 (function() {
-  var allStudents = <%- JSON.stringify(allStudents) %>;
+  var allStudents = <%- allStudentsJson %>;
   var studentMap = {};
-  allStudents.forEach(function(s) { studentMap[s.username] = s.id; });
+  allStudents.forEach(function(s) { studentMap[s.username] = s; });
 
   var SPLIT_RE = /[\s,，;；、\n\r]+/;
 
@@ -144,10 +152,11 @@
     var unmatched = [];
 
     raw.forEach(function(name) {
-      var userId = studentMap[name];
-      if (!userId) { unmatched.push(name); return; }
+      var student = studentMap[name];
+      if (!student) { unmatched.push(name); return; }
+      var userId = student.id;
       if (hiddenEl.querySelector('input[value="' + userId + '"]')) return;
-      addBadge(badgesEl, name, userId, true);
+      addBadge(badgesEl, studentLabel(student), userId, true);
       var inp = document.createElement('input');
       inp.type = 'hidden';
       inp.name = 'user_ids';
@@ -185,8 +194,8 @@
     var unmatched = [];
 
     names.forEach(function(name) {
-      var id = studentMap[name];
-      if (id) matched.push({ id: id, name: name });
+      var student = studentMap[name];
+      if (student) matched.push({ id: student.id, name: studentLabel(student) });
       else unmatched.push(name);
     });
 
@@ -218,11 +227,22 @@
     var badge = document.createElement('span');
     badge.className = 'inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs font-medium text-blue-700';
     badge.setAttribute('data-user-id', userId);
-    badge.innerHTML = name;
+    badge.textContent = name;
     if (removable) {
-      badge.innerHTML += '<button type="button" onclick="removeStudentBadge(this)" class="inline-flex items-center justify-center w-4 h-4 rounded-full text-blue-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="移除">×</button>';
+      var removeButton = document.createElement('button');
+      removeButton.type = 'button';
+      removeButton.setAttribute('onclick', 'removeStudentBadge(this)');
+      removeButton.className = 'inline-flex items-center justify-center w-4 h-4 rounded-full text-blue-400 hover:text-red-500 hover:bg-red-50 transition-colors';
+      removeButton.title = '移除';
+      removeButton.textContent = '×';
+      badge.appendChild(removeButton);
     }
     container.appendChild(badge);
+  }
+
+  function studentLabel(student) {
+    var gradeLabel = student.grade == null ? '未设置年级' : student.grade + '级';
+    return student.nickname + '（' + student.username + '，' + gradeLabel + '）';
   }
 
   // ---- PUT 表单提交 ----

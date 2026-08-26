@@ -1,25 +1,31 @@
 import { Router, Request, Response } from "express";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, ne } from "drizzle-orm";
 import { db } from "../db/index";
 import { courses, users, selections } from "../db/schema";
 import { requireAdmin } from "../middleware/auth";
 import { nowLocal } from "../utils/time";
 import { parseRouteId } from "../utils/parse-id";
 import { formatAllowedGrades } from "../utils/grade";
-import { asciiHeaderJson } from "../utils/hx-trigger";
+import { isGradeAllowed } from "../utils/grade";
+import { readMaxSelections } from "../services/selection-policy";
 
 const router = Router();
 
 router.get("/admin/class", requireAdmin, (_req: Request, res: Response) => {
   const allStudents = db
-    .select({ id: users.id, username: users.username })
+    .select({ id: users.id, username: users.username, nickname: users.nickname, grade: users.grade })
     .from(users)
     .where(eq(users.isAdmin, 0))
     .all();
 
   const allCourses = db.select().from(courses).all();
 
-  res.render("admin-class", { title: "班级管理", allStudents, allCourses });
+  res.render("admin-class", {
+    title: "班级管理",
+    allStudents,
+    allStudentsJson: JSON.stringify(allStudents).replace(/</g, "\\u003c"),
+    allCourses,
+  });
 });
 
 router.get("/api/admin/class/courses/search", requireAdmin, (req: Request, res: Response) => {
@@ -41,7 +47,7 @@ router.get("/api/admin/class/courses/search", requireAdmin, (req: Request, res: 
   }
 
   const enrolledStudents = db
-    .select({ id: users.id, username: users.username })
+    .select({ id: users.id, username: users.username, nickname: users.nickname, grade: users.grade })
     .from(selections)
     .innerJoin(users, eq(selections.userId, users.id))
     .where(eq(selections.courseId, course.id))
@@ -65,25 +71,27 @@ router.put(
       .get();
     if (!course) return res.status(404).send("课程不存在");
 
-    const ids: number[] = Array.isArray(user_ids)
-      ? user_ids
-          .map((id: string) => parseInt(id))
-          .filter((id: number) => !isNaN(id))
-      : user_ids
-        ? [parseInt(user_ids)]
-        : [];
+    const rawIds = Array.isArray(user_ids) ? user_ids : user_ids ? [user_ids] : [];
+    if (rawIds.some((id: unknown) => !/^\d+$/.test(String(id)))) {
+      return res.status(400).send("名单中包含无效学生ID");
+    }
+    const ids = rawIds.map((id: unknown) => Number(id));
 
     const uniqueIds = [...new Set(ids)];
 
-    const validIds = uniqueIds.length > 0
-      ? db.select({ id: users.id })
+    const validUsers = uniqueIds.length > 0
+      ? db.select({ id: users.id, grade: users.grade })
           .from(users)
           .where(and(eq(users.isAdmin, 0), inArray(users.id, uniqueIds)))
           .all()
-          .map((u) => u.id)
       : [];
-
-    const invalidIds = uniqueIds.filter(id => !validIds.includes(id));
+    const validIds = validUsers.map((user) => user.id);
+    if (validIds.length !== uniqueIds.length) {
+      return res.status(400).send("名单中包含不存在或非学生账号");
+    }
+    if (validUsers.some((user) => !isGradeAllowed(user.grade, course.allowedGrades))) {
+      return res.status(400).send("名单中包含该课程不允许年级的学生");
+    }
 
     if (validIds.length > course.totalSeats) {
       return res
@@ -91,6 +99,17 @@ router.put(
         .send(
           `名额不足，课程总名额 ${course.totalSeats}，当前提交 ${validIds.length} 人`
         );
+    }
+
+    const maxSelections = readMaxSelections(db);
+    for (const userId of validIds) {
+      const otherSelections = db.select({ id: selections.id })
+        .from(selections)
+        .where(and(eq(selections.userId, userId), ne(selections.courseId, courseId)))
+        .all().length;
+      if (otherSelections >= maxSelections) {
+        return res.status(400).send(`学生ID ${userId} 已达到最多 ${maxSelections} 门课限制`);
+      }
     }
 
     db.transaction((tx) => {
@@ -111,15 +130,6 @@ router.put(
         .run();
     });
 
-    if (invalidIds.length > 0) {
-      res.set(
-        "HX-Trigger",
-        asciiHeaderJson({
-          toast: { message: `以下ID不存在，已忽略：${invalidIds.join("、")}`, type: "warning" },
-        }),
-      );
-    }
-
     const updatedCourse = db
       .select()
       .from(courses)
@@ -127,7 +137,7 @@ router.put(
       .get()!;
 
     const enrolledStudents = db
-      .select({ id: users.id, username: users.username })
+      .select({ id: users.id, username: users.username, nickname: users.nickname, grade: users.grade })
       .from(selections)
       .innerJoin(users, eq(selections.userId, users.id))
       .where(eq(selections.courseId, courseId))
@@ -147,7 +157,7 @@ function escapeHtml(str: string): string {
 }
 
 function renderBadgesReadOnly(
-  students: { id: number; username: string }[]
+  students: StudentSummary[]
 ): string {
   if (students.length === 0) {
     return '<p class="text-sm text-gray-400">暂无学生选课</p>';
@@ -156,7 +166,7 @@ function renderBadgesReadOnly(
   students.forEach((s) => {
     html +=
       '<span class="inline-flex items-center rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs font-medium text-blue-700">' +
-      escapeHtml(s.username) +
+      escapeHtml(studentLabel(s)) +
       "</span>";
   });
   html += "</div>";
@@ -165,7 +175,7 @@ function renderBadgesReadOnly(
 
 function renderResult(
   course: any,
-  enrolled: { id: number; username: string }[],
+  enrolled: StudentSummary[],
   csrfToken: string
 ): string {
   const selected = enrolled.length;
@@ -199,7 +209,7 @@ function renderResult(
     " &middot; " +
     escapeHtml(course.location || "") +
     " &middot; 允许年级 " +
-    escapeHtml(formatAllowedGrades(course.allowedGrade)) +
+    escapeHtml(formatAllowedGrades(course.allowedGrades)) +
     "</p>";
   h += "</div>";
   h +=
@@ -262,7 +272,7 @@ function renderResult(
         '<span class="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs font-medium text-blue-700" data-user-id="' +
         s.id +
         '">' +
-        escapeHtml(s.username) +
+        escapeHtml(studentLabel(s)) +
         '<button type="button" onclick="removeStudentBadge(this)" class="text-blue-400 hover:text-red-500 hover:bg-red-50 transition-colors mx-0.5" title="移除">&times;</button></span>';
     });
   }
@@ -299,3 +309,14 @@ function renderResult(
 }
 
 export default router;
+
+type StudentSummary = {
+  id: number;
+  username: string;
+  nickname: string;
+  grade: number | null;
+};
+
+function studentLabel(student: StudentSummary): string {
+  return `${student.nickname}（${student.username}，${student.grade ?? "未设置"}级）`;
+}

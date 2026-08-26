@@ -6,6 +6,7 @@ import { migrate } from "./migrate";
 
 mkdirSync("data", { recursive: true });
 const sqlite = new Database("data/db.sqlite");
+sqlite.pragma("foreign_keys = ON");
 sqlite.pragma("journal_mode = WAL");
 migrate(sqlite);
 

@@ -27,9 +27,9 @@
 
 <script>
 (function() {
-  var allStudents = <%- JSON.stringify(allStudents) %>;
+  var allStudents = <%- allStudentsJson %>;
   var studentMap = {};
-  allStudents.forEach(function(s) { studentMap[s.username] = s.id; });
+  allStudents.forEach(function(s) { studentMap[s.username] = s; });
 
   var SPLIT_RE = /[\s,，;；、\n\r]+/;
 
@@ -45,10 +45,11 @@
     var unmatched = [];
 
     raw.forEach(function(name) {
-      var userId = studentMap[name];
-      if (!userId) { unmatched.push(name); return; }
+      var student = studentMap[name];
+      if (!student) { unmatched.push(name); return; }
+      var userId = student.id;
       if (hiddenEl.querySelector('input[value="' + userId + '"]')) return;
-      addBadge(badgesEl, name, userId, true);
+      addBadge(badgesEl, studentLabel(student), userId, true);
       var inp = document.createElement('input');
       inp.type = 'hidden';
       inp.name = 'user_ids';
@@ -84,11 +85,22 @@
     var badge = document.createElement('span');
     badge.className = 'inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs font-medium text-blue-700';
     badge.setAttribute('data-user-id', userId);
-    badge.innerHTML = name;
+    badge.textContent = name;
     if (removable) {
-      badge.innerHTML += '<button type="button" onclick="removeStudentBadge(this)" class="inline-flex items-center justify-center w-4 h-4 rounded-full text-blue-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="移除">&times;</button>';
+      var removeButton = document.createElement('button');
+      removeButton.type = 'button';
+      removeButton.setAttribute('onclick', 'removeStudentBadge(this)');
+      removeButton.className = 'inline-flex items-center justify-center w-4 h-4 rounded-full text-blue-400 hover:text-red-500 hover:bg-red-50 transition-colors';
+      removeButton.title = '移除';
+      removeButton.textContent = '×';
+      badge.appendChild(removeButton);
     }
     container.appendChild(badge);
+  }
+
+  function studentLabel(student) {
+    var gradeLabel = student.grade == null ? '未设置年级' : student.grade + '级';
+    return student.nickname + '（' + student.username + '，' + gradeLabel + '）';
   }
 
   document.addEventListener('submit', function(e) {

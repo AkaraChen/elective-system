@@ -39,12 +39,14 @@ npm run dev
 
 ```
 src/
-├── index.ts                 # Express 入口（中间件配置、路由挂载）
+├── index.ts                 # 进程入口
+├── app.ts                   # Express 中间件配置与路由挂载
 ├── css/
 │   └── input.css            # Tailwind CSS 源文件
 ├── db/
 │   ├── index.ts             # 数据库连接
 │   ├── schema.ts            # Drizzle ORM 表结构定义
+│   ├── migrate.ts           # 运行时兼容迁移
 │   └── seed.ts              # 种子数据
 ├── lib/
 │   └── session-store.ts     # 基于 better-sqlite3 的自定义 Session Store
@@ -59,6 +61,7 @@ src/
 │   ├── admin-access.ts      # 管理端：提前批次管理
 │   ├── admin-users.ts       # 管理端：用户管理
 │   └── admin-class.ts       # 管理端：班级/选课名单管理
+├── services/                # 账号、年级资格与选课规则
 ├── utils/
 │   ├── parse-id.ts          # 路由 ID 参数安全解析
 │   └── time.ts              # 本地时间格式化工具
@@ -95,8 +98,8 @@ src/
 ### 管理端
 
 - 课程 CRUD + 重置名额
-- 设置全局开始时间 `start_time`（默认当年本地 9 月 5 日 00:00:00）和全局截止时间 `end_time`
-- 年级顺序 `grade_order`（入学年份 / 毕业年份）与课程允许年级 `allowed_grade`（四位年份）
+- 设置全局开始时间 `start_time`（默认当年本地 9 月 5 日 00:00:00）和全局截止时间 `end_time`（默认当年本地 9 月 30 日 23:59:59）
+- 学生年级 `grade` 与课程允许年级 `allowed_grades`（四位年级标识）
 - 管理提前批次（为指定学生对指定课程设置更早的开放时间）
 - 用户管理（增删改查、密码重置）
 - 班级管理（查看某门课已选学生、批量导入选课名单）
@@ -106,7 +109,7 @@ src/
 
 有效开放时间取 **全局开始时间** 与课程开放时间的较晚者：
 
-1. 查询 `access` + `access_users` 是否有该学生的提前批次记录 → 有则使用 `access.open_time`
+1. 查询 `access` + `access_users` 是否有该学生的提前批次记录 → 有则使用最早的 `access.open_time`
 2. 否则使用 `courses.open_time`（默认开放时间）
 3. 再与全局 `start_time` 取较晚值；到达 `end_time` 后全部截止
 
@@ -114,11 +117,10 @@ src/
 
 ### 年级限制
 
-- 学生账号保存四位入学年或毕业年（由 `grade_order` 决定字段含义），界面统一显示为“2026级”样式
-- 不把年份换算成“一年级/三年级”，也不限制学制长度；学生年份直接与课程限制比对
-- 课程 `allowed_grade` 为逗号分隔的四位年份，如 `2024,2026`；留空表示不限
-- 学生端列表和抢课接口只保留该生年份允许的课程
-- 管理员收紧课程允许年份时，会自动移除不符合条件的已有选课并恢复对应名额
+- 学生账号保存四位 `grade` 标识，界面统一显示为“2026级”样式
+- 课程 `allowed_grades` 为逗号分隔的四位年级标识，如 `2024,2026`；留空表示不限
+- 学生端列表、抢课接口和管理员分班接口只允许该生 `grade` 对应的课程
+- 修改学生 `grade` 或收紧课程 `allowed_grades` 时，会自动移除不符合条件的已有选课并恢复对应名额
 
 ## 抢课并发策略
 

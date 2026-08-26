@@ -33,6 +33,7 @@
               <a href="/selections"
                  class="px-3 py-2 rounded-md text-sm font-medium transition-colors <%= currentPath === '/selections' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50' %>">我的选课</a>
             <% } %>
+            <span class="px-3 py-2 text-sm text-gray-500"><%= user.nickname %></span>
             <form action="/api/logout" method="POST" class="ml-2">
               <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <button type="submit"
@@ -64,6 +65,7 @@
                    class="block px-4 py-2 text-sm <%= currentPath === '/selections' ? 'text-blue-700 bg-blue-50' : 'text-gray-700 hover:bg-gray-100' %>">我的选课</a>
               <% } %>
               <hr class="my-1 border-gray-100" />
+              <span class="block px-4 py-2 text-sm text-gray-500"><%= user.nickname %></span>
               <form action="/api/logout" method="POST">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-gray-500 hover:bg-gray-100">退出</button>

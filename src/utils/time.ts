@@ -29,6 +29,10 @@ export function defaultStartTime(now: Date = new Date()): string {
   return `${now.getFullYear()}-09-05T00:00:00`;
 }
 
+export function defaultEndTime(now: Date = new Date()): string {
+  return `${now.getFullYear()}-09-30T23:59:59`;
+}
+
 export function parseLocalDateTime(s: string): Date | null {
   if (!s) return null;
   const m = s.trim().match(LOCAL_DT);

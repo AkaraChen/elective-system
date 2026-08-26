@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   asEndInstant,
   asStartInstant,
+  defaultEndTime,
   defaultStartTime,
   isValidLocalDateTime,
   laterInstant,
@@ -14,6 +15,10 @@ describe("local time helpers", () => {
   it("default start time is Sept 5 of the local calendar year at 00:00:00", () => {
     assert.equal(defaultStartTime(new Date(2026, 7, 24, 21, 0, 0)), "2026-09-05T00:00:00");
     assert.equal(defaultStartTime(new Date(2025, 11, 31, 23, 59, 59)), "2025-09-05T00:00:00");
+  });
+
+  it("default end time is Sept 30 of the local calendar year at 23:59:59", () => {
+    assert.equal(defaultEndTime(new Date(2031, 0, 1)), "2031-09-30T23:59:59");
   });
 
   it("parses date-only values as local midnight, not UTC", () => {

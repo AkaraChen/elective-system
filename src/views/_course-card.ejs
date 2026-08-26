@@ -31,9 +31,9 @@
       <span><%= c.location %></span>
     </div>
     <% } %>
-    <% if (c.allowedGrade) { %>
+    <% if (c.allowedGrades) { %>
     <div class="flex items-center gap-2">
-      <span>允许年级：<%= String(c.allowedGrade).split(',').map(function(g) { return g + '级'; }).join('、') %></span>
+      <span>允许年级：<%= String(c.allowedGrades).split(',').map(function(g) { return g + '级'; }).join('、') %></span>
     </div>
     <% } %>
     <% if (c.description) { %>
