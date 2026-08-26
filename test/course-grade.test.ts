@@ -12,9 +12,10 @@ function createFixture() {
     CREATE TABLE users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT NOT NULL UNIQUE,
+      nickname TEXT NOT NULL,
       password TEXT NOT NULL,
       is_admin INTEGER NOT NULL DEFAULT 0,
-      year INTEGER
+      grade INTEGER
     );
     CREATE TABLE courses (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -26,7 +27,7 @@ function createFixture() {
       total_seats INTEGER NOT NULL,
       available_seats INTEGER NOT NULL,
       open_time TEXT NOT NULL,
-      allowed_grade TEXT
+      allowed_grades TEXT
     );
     CREATE TABLE selections (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -39,9 +40,9 @@ function createFixture() {
   const db = drizzle(sqlite, { schema: { users, courses, selections } });
 
   db.insert(users).values([
-    { username: "allowed", password: "x", year: 2026 },
-    { username: "removed", password: "x", year: 2025 },
-    { username: "missing", password: "x", year: null },
+    { username: "allowed", nickname: "Allowed", password: "x", grade: 2026 },
+    { username: "removed", nickname: "Removed", password: "x", grade: 2025 },
+    { username: "missing", nickname: "Missing", password: "x", grade: null },
   ]).run();
   db.insert(courses).values({
     name: "Test",
@@ -60,7 +61,7 @@ function createFixture() {
 }
 
 describe("course grade reconciliation", () => {
-  it("removes every selected student outside the new four-digit year restriction", () => {
+  it("removes every selected student outside the new grade restriction", () => {
     const { db, sqlite } = createFixture();
     try {
       const result = db.transaction((tx) => removeIneligibleSelections(tx, 1, "2026"));
@@ -73,14 +74,14 @@ describe("course grade reconciliation", () => {
     }
   });
 
-  it("keeps all existing selections when the course becomes unrestricted", () => {
+  it("keeps graded students when unrestricted and removes accounts without a grade", () => {
     const { db, sqlite } = createFixture();
     try {
       const result = db.transaction((tx) => removeIneligibleSelections(tx, 1, null));
       const remaining = db.select().from(selections).where(eq(selections.courseId, 1)).all();
 
-      assert.deepEqual(result, { removedCount: 0, selectedCount: 3 });
-      assert.equal(remaining.length, 3);
+      assert.deepEqual(result, { removedCount: 1, selectedCount: 2 });
+      assert.deepEqual(remaining.map((selection) => selection.userId), [1, 2]);
     } finally {
       sqlite.close();
     }

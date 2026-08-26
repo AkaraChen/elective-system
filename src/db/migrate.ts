@@ -1,5 +1,5 @@
 import type Database from "better-sqlite3";
-import { defaultStartTime } from "../utils/time";
+import { defaultEndTime, defaultStartTime } from "../utils/time";
 
 function tableExists(sqlite: Database.Database, table: string): boolean {
   const row = sqlite
@@ -14,17 +14,35 @@ function hasColumn(sqlite: Database.Database, table: string, column: string): bo
 }
 
 export function migrate(sqlite: Database.Database): void {
-  if (tableExists(sqlite, "courses") && !hasColumn(sqlite, "courses", "allowed_grade")) {
-    sqlite.exec("ALTER TABLE courses ADD COLUMN allowed_grade TEXT");
+  if (tableExists(sqlite, "users")) {
+    if (!hasColumn(sqlite, "users", "nickname")) {
+      sqlite.exec("ALTER TABLE users ADD COLUMN nickname TEXT NOT NULL DEFAULT ''");
+    }
+    sqlite.exec("UPDATE users SET nickname = username WHERE nickname = ''");
+
+    if (!hasColumn(sqlite, "users", "grade")) {
+      if (hasColumn(sqlite, "users", "year")) {
+        sqlite.exec("ALTER TABLE users RENAME COLUMN year TO grade");
+      } else {
+        sqlite.exec("ALTER TABLE users ADD COLUMN grade INTEGER");
+      }
+    }
   }
-  if (tableExists(sqlite, "users") && !hasColumn(sqlite, "users", "year")) {
-    sqlite.exec("ALTER TABLE users ADD COLUMN year INTEGER");
+
+  if (tableExists(sqlite, "courses") && !hasColumn(sqlite, "courses", "allowed_grades")) {
+    if (hasColumn(sqlite, "courses", "allowed_grade")) {
+      sqlite.exec("ALTER TABLE courses RENAME COLUMN allowed_grade TO allowed_grades");
+    } else {
+      sqlite.exec("ALTER TABLE courses ADD COLUMN allowed_grades TEXT");
+    }
   }
+
   if (tableExists(sqlite, "config")) {
     const insert = sqlite.prepare(
       "INSERT INTO config (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING",
     );
     insert.run("start_time", defaultStartTime());
-    insert.run("grade_order", "enrollment");
+    insert.run("end_time", defaultEndTime());
+    sqlite.prepare("DELETE FROM config WHERE key = ?").run("grade_order");
   }
 }

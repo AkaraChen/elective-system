@@ -4,11 +4,12 @@
   <summary class="px-6 py-3 cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 select-none">+ 新建用户</summary>
   <form method="POST" action="/api/admin/users" class="px-6 pb-4">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+    <div class="grid grid-cols-1 sm:grid-cols-5 gap-3">
       <%- include('_components/form-field', { label: '用户名', name: 'username', required: true }) %>
+      <%- include('_components/form-field', { label: '昵称', name: 'nickname', required: true }) %>
       <%- include('_components/form-field', { label: '密码', name: 'password', type: 'password', required: true }) %>
       <%- include('_components/form-field', { label: '角色', name: 'isAdmin', type: 'select', required: true, options: '<option value="0">学生</option><option value="1">管理员</option>' }) %>
-      <%- include('_components/form-field', { label: gradeOrder === 'graduation' ? '毕业年份' : '入学年份', name: 'year', type: 'number', placeholder: '例如 2026' }) %>
+      <%- include('_components/form-field', { label: '年级', name: 'grade', type: 'number', placeholder: '例如 2026' }) %>
     </div>
     <button type="submit" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors mt-2">创建用户</button>
   </form>
@@ -37,17 +38,18 @@
 <h3 class="text-lg font-bold text-gray-900 mb-4">管理员列表</h3>
 
 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-  <div class="hidden md:grid md:grid-cols-5 gap-2 px-6 py-3 bg-gray-50 border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wider">
+  <div class="hidden md:grid md:grid-cols-6 gap-2 px-6 py-3 bg-gray-50 border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wider">
     <span>ID</span>
     <span>用户名</span>
+    <span>昵称</span>
     <span>角色</span>
-    <span><%= gradeOrder === 'graduation' ? '毕业年份' : '入学年份' %></span>
+    <span>年级</span>
     <span class="text-center">操作</span>
   </div>
 
   <div class="divide-y divide-gray-50">
     <% admins.forEach(function(u) { %>
-      <%- include('_user-row', { u: u, gradeOrder: gradeOrder }) %>
+      <%- include('_user-row', { u: u }) %>
     <% }); %>
   </div>
 </div>

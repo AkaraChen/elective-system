@@ -1,11 +1,5 @@
-export type GradeOrder = "enrollment" | "graduation";
-
-export function isGradeOrder(value: string): value is GradeOrder {
-  return value === "enrollment" || value === "graduation";
-}
-
-export function studentCohort(year: number | null | undefined): number | null {
-  return parseYear(year);
+export function studentGrade(grade: number | null | undefined): number | null {
+  return parseGrade(grade);
 }
 
 export function parseAllowedGrades(raw: string | null | undefined): number[] | null {
@@ -39,14 +33,14 @@ export function isGradeAllowed(
   grade: number | null,
   allowedRaw: string | null | undefined,
 ): boolean {
+  if (grade == null) return false;
   if (allowedRaw == null || String(allowedRaw).trim() === "") return true;
   const allowed = parseAllowedGrades(allowedRaw);
   if (!allowed) return false;
-  if (grade == null) return false;
   return allowed.includes(grade);
 }
 
-export function parseYear(raw: unknown): number | null {
+export function parseGrade(raw: unknown): number | null {
   if (raw == null || raw === "") return null;
   const value = typeof raw === "number" ? String(raw) : String(raw).trim();
   if (!/^\d{4}$/.test(value)) return null;

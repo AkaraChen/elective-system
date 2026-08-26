@@ -4,22 +4,22 @@ import {
   formatAllowedGrades,
   isGradeAllowed,
   parseAllowedGrades,
-  parseYear,
+  parseGrade,
   serializeAllowedGrades,
-  studentCohort,
+  studentGrade,
 } from "../src/utils/grade";
 
-describe("student cohort", () => {
-  it("uses the four-digit year directly without converting it to an ordinal grade", () => {
-    assert.equal(studentCohort(2026), 2026);
-    assert.equal(studentCohort(1000), 1000);
-    assert.equal(studentCohort(null), null);
-    assert.equal(studentCohort(26), null);
+describe("student grade", () => {
+  it("uses the four-digit grade identifier directly", () => {
+    assert.equal(studentGrade(2026), 2026);
+    assert.equal(studentGrade(1000), 1000);
+    assert.equal(studentGrade(null), null);
+    assert.equal(studentGrade(26), null);
   });
 });
 
 describe("allowed grades", () => {
-  it("parses, sorts, and deduplicates four-digit years", () => {
+  it("parses, sorts, and deduplicates four-digit grade identifiers", () => {
     assert.deepEqual(parseAllowedGrades("2026,2024"), [2024, 2026]);
     assert.deepEqual(parseAllowedGrades("2026、2024"), [2024, 2026]);
     assert.deepEqual(parseAllowedGrades(" 2026 2026 2024 "), [2024, 2026]);
@@ -29,9 +29,10 @@ describe("allowed grades", () => {
     assert.equal(parseAllowedGrades("abcd"), null);
   });
 
-  it("matches the student's four-digit cohort and formats every value with 级", () => {
+  it("matches the student's grade and formats every value with 级", () => {
     assert.equal(isGradeAllowed(2025, null), true);
     assert.equal(isGradeAllowed(2025, ""), true);
+    assert.equal(isGradeAllowed(null, null), false);
     assert.equal(isGradeAllowed(2025, "2024,2026"), false);
     assert.equal(isGradeAllowed(2026, "2024,2026"), true);
     assert.equal(isGradeAllowed(null, "2024,2026"), false);
@@ -40,13 +41,13 @@ describe("allowed grades", () => {
     assert.equal(formatAllowedGrades("2024,2026"), "2024级、2026级");
   });
 
-  it("accepts exactly four digits for a student year", () => {
-    assert.equal(parseYear("2026"), 2026);
-    assert.equal(parseYear(2026), 2026);
-    assert.equal(parseYear(" 2026 "), 2026);
-    assert.equal(parseYear(""), null);
-    assert.equal(parseYear("026"), null);
-    assert.equal(parseYear("2026.5"), null);
-    assert.equal(parseYear("2026abc"), null);
+  it("accepts exactly four digits for a student grade", () => {
+    assert.equal(parseGrade("2026"), 2026);
+    assert.equal(parseGrade(2026), 2026);
+    assert.equal(parseGrade(" 2026 "), 2026);
+    assert.equal(parseGrade(""), null);
+    assert.equal(parseGrade("026"), null);
+    assert.equal(parseGrade("2026.5"), null);
+    assert.equal(parseGrade("2026abc"), null);
   });
 });

@@ -1,36 +1,16 @@
 import { Router, Request, Response } from "express";
 import { eq, and, count } from "drizzle-orm";
 import { db } from "../db/index";
-import { courses, access, accessUsers, selections, users } from "../db/schema";
+import { courses, selections, users } from "../db/schema";
 import { requireAuth } from "../middleware/auth";
 import { asEndInstant, nowLocal } from "../utils/time";
 import { parseRouteId } from "../utils/parse-id";
-import { isGradeAllowed, studentCohort } from "../utils/grade";
+import { isGradeAllowed, studentGrade } from "../utils/grade";
 import { effectiveOpenTime, resolveCourseState } from "../utils/course-state";
-import { readConfig, readEndTime, readStartTime } from "../utils/app-config";
+import { readEndTime, readStartTime } from "../utils/app-config";
+import { readMaxSelections, readOpenTimeForUser } from "../services/selection-policy";
 
 const router = Router();
-
-function getOpenTimeForUser(client: any, userId: number, courseId: number): string {
-  const record = client
-    .select({ openTime: access.openTime })
-    .from(access)
-    .innerJoin(accessUsers, eq(access.id, accessUsers.accessId))
-    .where(and(eq(access.courseId, courseId), eq(accessUsers.userId, userId)))
-    .get();
-
-  if (record) return record.openTime;
-
-  const course = client.select({ openTime: courses.openTime }).from(courses).where(eq(courses.id, courseId)).get();
-  return course!.openTime;
-}
-
-const DEFAULT_MAX_SELECTIONS = 3;
-
-function getMaxSelections(): number {
-  const v = parseInt(readConfig(db, "max_selections") || "");
-  return (!isNaN(v) && v > 0) ? v : DEFAULT_MAX_SELECTIONS;
-}
 
 router.get("/courses", requireAuth, (req: Request, res: Response) => {
   if (req.session.isAdmin) return res.redirect("/admin/courses");
@@ -38,9 +18,9 @@ router.get("/courses", requireAuth, (req: Request, res: Response) => {
   const userId = req.session.userId!;
   const now = nowLocal();
   const user = db.select().from(users).where(eq(users.id, userId)).get();
-  const grade = studentCohort(user?.year);
+  const grade = studentGrade(user?.grade);
   const startTime = readStartTime(db);
-  const endTime = readEndTime(db) || now;
+  const endTime = readEndTime(db);
 
   const allCourses = db.select().from(courses).all();
 
@@ -52,9 +32,9 @@ router.get("/courses", requireAuth, (req: Request, res: Response) => {
   const selectedIds = new Set(selectedRows.map((r) => r.courseId));
 
   const courseList = allCourses
-    .filter((c) => selectedIds.has(c.id) || isGradeAllowed(grade, c.allowedGrade))
+    .filter((c) => isGradeAllowed(grade, c.allowedGrades))
     .map((c) => {
-      const courseOpen = getOpenTimeForUser(db, userId, c.id);
+      const courseOpen = readOpenTimeForUser(db, userId, c.id);
       const opentime = effectiveOpenTime(courseOpen, startTime);
       const isSelected = selectedIds.has(c.id);
       const state = resolveCourseState({
@@ -83,7 +63,7 @@ router.post("/api/courses/:id/select", requireAuth, (req: Request, res: Response
   if (courseId === null) return res.status(400).send("无效的课程ID");
   const now = nowLocal();
 
-  const maxSelections = getMaxSelections();
+  const maxSelections = readMaxSelections(db);
 
   try {
     db.transaction((tx) => {
@@ -100,18 +80,18 @@ router.post("/api/courses/:id/select", requireAuth, (req: Request, res: Response
       }
 
       const user = tx.select().from(users).where(eq(users.id, userId)).get();
-      const grade = studentCohort(user?.year);
-      if (!isGradeAllowed(grade, course.allowedGrade)) {
+      const grade = studentGrade(user?.grade);
+      if (!isGradeAllowed(grade, course.allowedGrades)) {
         throw new Error("当前年级不可选择该课程");
       }
 
-      const opentime = getOpenTimeForUser(tx, userId, courseId);
+      const opentime = readOpenTimeForUser(tx, userId, courseId);
       const startTime = readStartTime(tx);
       const endTime = readEndTime(tx);
       const effectiveOpen = effectiveOpenTime(opentime, startTime);
 
       if (now < effectiveOpen) throw new Error("尚未到开放时间");
-      if (endTime && now >= asEndInstant(endTime)) throw new Error("选课已截止");
+      if (now >= asEndInstant(endTime)) throw new Error("选课已截止");
       if (course.availableSeats <= 0) throw new Error("没有剩余名额");
 
       const existing = tx
@@ -132,9 +112,9 @@ router.post("/api/courses/:id/select", requireAuth, (req: Request, res: Response
     });
 
     const course = db.select().from(courses).where(eq(courses.id, courseId)).get()!;
-    const courseOpen = getOpenTimeForUser(db, userId, courseId);
+    const courseOpen = readOpenTimeForUser(db, userId, courseId);
     const startTime = readStartTime(db);
-    const endTimeStr = readEndTime(db) || "";
+    const endTimeStr = readEndTime(db);
 
     const c = {
       ...course,
@@ -161,7 +141,7 @@ router.post("/api/courses/:id/drop", requireAuth, (req: Request, res: Response) 
   try {
     db.transaction((tx) => {
       const endTime = readEndTime(tx);
-      if (endTime && now >= asEndInstant(endTime)) throw new Error("选课已截止，无法退课");
+      if (now >= asEndInstant(endTime)) throw new Error("选课已截止，无法退课");
 
       const sel = tx
         .select()
@@ -182,9 +162,9 @@ router.post("/api/courses/:id/drop", requireAuth, (req: Request, res: Response) 
     });
 
     const course = db.select().from(courses).where(eq(courses.id, courseId)).get()!;
-    const courseOpen = getOpenTimeForUser(db, userId, courseId);
+    const courseOpen = readOpenTimeForUser(db, userId, courseId);
     const startTime = readStartTime(db);
-    const endTime = readEndTime(db) || "";
+    const endTime = readEndTime(db);
     const opentime = effectiveOpenTime(courseOpen, startTime);
     const state = resolveCourseState({
       now,

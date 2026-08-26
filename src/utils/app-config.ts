@@ -1,7 +1,6 @@
 import { eq } from "drizzle-orm";
 import { config } from "../db/schema";
-import { isGradeOrder, type GradeOrder } from "./grade";
-import { defaultStartTime } from "./time";
+import { defaultEndTime, defaultStartTime } from "./time";
 
 type ConfigClient = {
   select: (...args: any[]) => any;
@@ -16,11 +15,6 @@ export function readStartTime(client: ConfigClient): string {
   return readConfig(client, "start_time") || defaultStartTime();
 }
 
-export function readEndTime(client: ConfigClient): string | undefined {
-  return readConfig(client, "end_time");
-}
-
-export function readGradeOrder(client: ConfigClient): GradeOrder {
-  const v = readConfig(client, "grade_order") || "enrollment";
-  return isGradeOrder(v) ? v : "enrollment";
+export function readEndTime(client: ConfigClient): string {
+  return readConfig(client, "end_time") || defaultEndTime();
 }

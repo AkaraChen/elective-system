@@ -26,8 +26,8 @@ export function seed(d: ReturnType<typeof drizzle>) {
   const studentHash = bcryptjs.hashSync("123", 10);
 
   d.insert(users).values([
-    { username: "admin", password: adminHash, isAdmin: 1 },
-    { username: "student", password: studentHash, isAdmin: 0, year: 2024 },
+    { username: "admin", nickname: "管理员", password: adminHash, isAdmin: 1 },
+    { username: "student", nickname: "示例学生", password: studentHash, isAdmin: 0, grade: 2024 },
   ]).run();
 
   d.insert(courses).values([
@@ -40,7 +40,7 @@ export function seed(d: ReturnType<typeof drizzle>) {
       totalSeats: 60,
       availableSeats: 60,
       openTime: "2026-08-01T00:00:00",
-      allowedGrade: "2024,2025,2026",
+      allowedGrades: "2024,2025,2026",
     },
     {
       name: "Go语言",
@@ -51,7 +51,7 @@ export function seed(d: ReturnType<typeof drizzle>) {
       totalSeats: 40,
       availableSeats: 40,
       openTime: "2026-08-30T00:00:00",
-      allowedGrade: "2025,2026",
+      allowedGrades: "2025,2026",
     },
   ]).run();
 
@@ -65,9 +65,8 @@ export function seed(d: ReturnType<typeof drizzle>) {
   ]).run();
 
   d.insert(config).values([
-    { key: "end_time", value: "2026-08-15T23:59:59" },
+    { key: "end_time", value: "2026-09-30T23:59:59" },
     { key: "start_time", value: "2026-09-05T00:00:00" },
-    { key: "grade_order", value: "enrollment" },
     { key: "site_title", value: "选课系统" },
     { key: "max_selections", value: "1" },
   ]).run();

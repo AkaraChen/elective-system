@@ -6,14 +6,13 @@ import { requireAdmin } from "../middleware/auth";
 import {
   toLocalISOShort,
   nowLocal,
-  defaultStartTime,
   isValidLocalDateTime,
   normalizeStartOfDay,
   normalizeEndOfDay,
 } from "../utils/time";
 import { parseRouteId } from "../utils/parse-id";
-import { isGradeOrder, parseAllowedGrades, serializeAllowedGrades } from "../utils/grade";
-import { readGradeOrder } from "../utils/app-config";
+import { parseAllowedGrades, serializeAllowedGrades } from "../utils/grade";
+import { readEndTime, readStartTime } from "../utils/app-config";
 import { removeIneligibleSelections } from "../services/course-grade";
 
 const router = Router();
@@ -29,39 +28,33 @@ function getDefaultOpenTime(): string {
   return toLocalISOShort(closer);
 }
 
-const ALLOWED_CONFIG_KEYS = ["end_time", "start_time", "site_title", "max_selections", "grade_order"];
+const ALLOWED_CONFIG_KEYS = ["end_time", "start_time", "site_title", "max_selections"];
 
-function parseAllowedGradeInput(raw: unknown): { ok: true; value: string | null } | { ok: false; error: string } {
+function parseAllowedGradesInput(raw: unknown): { ok: true; value: string | null } | { ok: false; error: string } {
   if (raw == null || String(raw).trim() === "") return { ok: true, value: null };
   const grades = parseAllowedGrades(String(raw));
-  if (!grades) return { ok: false, error: "允许年级格式不正确，请填写4位年份，多个年级用逗号分隔，例如 2024,2026" };
+  if (!grades) return { ok: false, error: "允许年级格式不正确，请填写4位年级标识，多个年级用逗号分隔，例如 2024,2026" };
   return { ok: true, value: serializeAllowedGrades(grades) };
 }
 
 class CourseCapacityError extends Error {}
 
 router.get("/admin/courses", requireAdmin, (_req: Request, res: Response) => {
-  const endTimeRow = db.select({ value: config.value }).from(config).where(eq(config.key, "end_time")).get();
-  const endTime = endTimeRow?.value || "";
-  const startTimeRow = db.select({ value: config.value }).from(config).where(eq(config.key, "start_time")).get();
-  const startTime = startTimeRow?.value || defaultStartTime();
+  const endTime = readEndTime(db);
+  const startTime = readStartTime(db);
   const siteTitleRow = db.select({ value: config.value }).from(config).where(eq(config.key, "site_title")).get();
   const siteTitle = siteTitleRow?.value || "选课系统";
   const maxSelectionsRow = db.select({ value: config.value }).from(config).where(eq(config.key, "max_selections")).get();
   const maxSelections = maxSelectionsRow?.value || "1";
-  const gradeOrder = readGradeOrder(db);
   const defaultOpenTime = getDefaultOpenTime();
-  const closerMonth = defaultOpenTime.substring(5, 7);
-  const closerYear = defaultOpenTime.substring(0, 4);
-  const nextOpenDateLabel = `${closerYear}年${closerMonth === "03" ? "3" : "9"}月1日`;
-  const minEndDate = defaultOpenTime.substring(0, 10);
+  const minEndDate = startTime.substring(0, 10);
 
   const courseRows = db.all(
     sql`SELECT c.id, c.name, c.teacher, c.description,
         c.course_time as courseTime, c.location,
         c.total_seats as totalSeats, c.available_seats as availableSeats,
         c.open_time as openTime,
-        c.allowed_grade as allowedGrade,
+        c.allowed_grades as allowedGrades,
         COALESCE(sc.cnt, 0) as selected_count
         FROM courses c
         LEFT JOIN (SELECT course_id, count(*) as cnt FROM selections GROUP BY course_id) sc
@@ -76,8 +69,6 @@ router.get("/admin/courses", requireAdmin, (_req: Request, res: Response) => {
     startTime,
     siteTitle,
     maxSelections,
-    gradeOrder,
-    nextOpenDateLabel,
     defaultOpenTime,
     minEndDate,
   });
@@ -85,17 +76,17 @@ router.get("/admin/courses", requireAdmin, (_req: Request, res: Response) => {
 
 router.post("/api/admin/courses", requireAdmin, (req: Request, res: Response) => {
   const { name, teacher, description, courseTime, location, openTime } = req.body;
-  const totalSeats = parseInt(req.body.totalSeats);
+  const totalSeats = Number(req.body.totalSeats);
 
   const errors: string[] = [];
   if (!name || !name.trim()) errors.push("课程名称不能为空");
   if (!teacher || !teacher.trim()) errors.push("授课教师不能为空");
-  if (isNaN(totalSeats) || totalSeats < 1) errors.push("总名额必须为大于0的整数");
+  if (!Number.isInteger(totalSeats) || totalSeats < 1) errors.push("总名额必须为大于0的整数");
   if (!openTime || !isValidLocalDateTime(openTime)) errors.push("开放时间格式不正确");
-  let allowedGrade: string | null = null;
-  const allowed = parseAllowedGradeInput(req.body.allowedGrade);
+  let allowedGrades: string | null = null;
+  const allowed = parseAllowedGradesInput(req.body.allowedGrades);
   if (!allowed.ok) errors.push(allowed.error);
-  else allowedGrade = allowed.value;
+  else allowedGrades = allowed.value;
 
   if (errors.length > 0) {
     return res.status(400).send(errors.join("；"));
@@ -110,7 +101,7 @@ router.post("/api/admin/courses", requireAdmin, (req: Request, res: Response) =>
     totalSeats,
     availableSeats: totalSeats,
     openTime: normalizeStartOfDay(openTime) || nowLocal(),
-    allowedGrade,
+    allowedGrades,
   }).run();
 
   res.redirect("/admin/courses");
@@ -119,15 +110,21 @@ router.post("/api/admin/courses", requireAdmin, (req: Request, res: Response) =>
 router.put("/api/admin/courses/:id", requireAdmin, (req: Request, res: Response) => {
   const courseId = parseRouteId(req.params.id);
   if (courseId === null) return res.status(400).send("无效的课程ID");
-  const { name, teacher, description, courseTime, location, totalSeats, openTime, resetSeats, allowedGrade } = req.body;
+  const { name, teacher, description, courseTime, location, totalSeats, openTime, resetSeats, allowedGrades } = req.body;
 
   const existing = db.select().from(courses).where(eq(courses.id, courseId)).get();
   if (!existing) return res.status(404).send("课程不存在");
 
   const updateData: any = {};
 
-  if (name !== undefined) updateData.name = name;
-  if (teacher !== undefined) updateData.teacher = teacher;
+  if (name !== undefined) {
+    if (!String(name).trim()) return res.status(400).send("课程名称不能为空");
+    updateData.name = String(name).trim();
+  }
+  if (teacher !== undefined) {
+    if (!String(teacher).trim()) return res.status(400).send("授课教师不能为空");
+    updateData.teacher = String(teacher).trim();
+  }
   if (description !== undefined) updateData.description = description || null;
   if (courseTime !== undefined) updateData.courseTime = courseTime || null;
   if (location !== undefined) updateData.location = location || null;
@@ -137,15 +134,15 @@ router.put("/api/admin/courses/:id", requireAdmin, (req: Request, res: Response)
     }
     updateData.openTime = openTime ? normalizeStartOfDay(openTime) : openTime;
   }
-  if (allowedGrade !== undefined) {
-    const allowed = parseAllowedGradeInput(allowedGrade);
+  if (allowedGrades !== undefined) {
+    const allowed = parseAllowedGradesInput(allowedGrades);
     if (!allowed.ok) return res.status(400).send(allowed.error);
-    updateData.allowedGrade = allowed.value;
+    updateData.allowedGrades = allowed.value;
   }
   let parsedTotalSeats: number | undefined;
   if (totalSeats !== undefined) {
-    parsedTotalSeats = parseInt(totalSeats);
-    if (isNaN(parsedTotalSeats) || parsedTotalSeats < 1) {
+    parsedTotalSeats = Number(totalSeats);
+    if (!Number.isInteger(parsedTotalSeats) || parsedTotalSeats < 1) {
       return res.status(400).send("总名额必须为大于0的整数");
     }
     updateData.totalSeats = parsedTotalSeats;
@@ -163,8 +160,8 @@ router.put("/api/admin/courses/:id", requireAdmin, (req: Request, res: Response)
           .where(eq(selections.courseId, courseId))
           .get()?.count ?? 0;
 
-        if (allowedGrade !== undefined) {
-          const reconciled = removeIneligibleSelections(tx, courseId, updateData.allowedGrade);
+        if (allowedGrades !== undefined) {
+          const reconciled = removeIneligibleSelections(tx, courseId, updateData.allowedGrades);
           removedCount = reconciled.removedCount;
           selectedCount = reconciled.selectedCount;
         }
@@ -221,22 +218,34 @@ router.put("/api/admin/config", requireAdmin, (req: Request, res: Response) => {
     return res.status(400).send("不可修改的配置项");
   }
 
+  if ((key === "start_time" || key === "end_time") && !value) {
+    return res.status(400).send("开始时间和截止时间不能为空");
+  }
+
   if (key === "end_time" && value && !isValidLocalDateTime(value)) {
     return res.status(400).send("截止时间格式不正确");
   }
   if (key === "start_time" && value && !isValidLocalDateTime(value)) {
     return res.status(400).send("开始时间格式不正确");
   }
-  if (key === "grade_order" && !isGradeOrder(value || "")) {
-    return res.status(400).send("年级顺序只能是入学年份或毕业年份");
-  }
-  if (key === "max_selections" && (isNaN(parseInt(value)) || parseInt(value) < 1)) {
+  if (key === "max_selections" && (!/^\d+$/.test(String(value)) || Number(value) < 1)) {
     return res.status(400).send("最大选课数必须为正整数");
+  }
+  if (key === "site_title" && !String(value || "").trim()) {
+    return res.status(400).send("显示标题不能为空");
   }
 
   let stored = value || "";
   if (key === "end_time" && stored) stored = normalizeEndOfDay(stored);
   if (key === "start_time" && stored) stored = normalizeStartOfDay(stored);
+  if (key === "site_title") stored = stored.trim();
+
+  if (key === "start_time" && stored >= readEndTime(db)) {
+    return res.status(400).send("开始时间必须早于截止时间");
+  }
+  if (key === "end_time" && stored <= readStartTime(db)) {
+    return res.status(400).send("截止时间必须晚于开始时间");
+  }
 
   db.insert(config).values({ key, value: stored })
     .onConflictDoUpdate({ target: config.key, set: { value: stored } })

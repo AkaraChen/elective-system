@@ -9,9 +9,10 @@
     "build:css": "tailwindcss -i src/css/input.css -o public/style.css",
     "build:css:watch": "tailwindcss -i src/css/input.css -o public/style.css --watch",
     "db:prepare": "node -e \"require('fs').mkdirSync('data',{recursive:true})\"",
+    "db:migrate": "tsx src/db/migrate-cli.ts",
     "db:push": "npm run db:prepare && drizzle-kit push",
     "db:seed": "tsx src/db/seed.ts",
-    "db:init": "npm run db:push && npm run db:seed",
+    "db:init": "npm run db:prepare && npm run db:migrate && npm run db:push && npm run db:seed",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test test/*.test.ts"
   },
