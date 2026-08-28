@@ -1,18 +1,36 @@
-const pad = (n: number) => String(n).padStart(2, "0");
+export const BUSINESS_TIME_ZONE = "Asia/Shanghai";
+
+const chinaFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: BUSINESS_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23",
+});
 
 const LOCAL_DT =
   /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?$/;
 
+function chinaParts(d: Date): Record<string, string> {
+  return Object.fromEntries(
+    chinaFormatter.formatToParts(d).map(({ type, value }) => [type, value]),
+  );
+}
+
 export function toLocalISO(d: Date): string {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  const parts = chinaParts(d);
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}`;
 }
 
 export function toLocalISOShort(d: Date): string {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return toLocalISO(d).substring(0, 16);
 }
 
-export function nowLocal(): string {
-  return toLocalISO(new Date());
+export function nowLocal(now: Date = new Date()): string {
+  return toLocalISO(now);
 }
 
 export function normalizeStartOfDay(dateStr: string): string {
@@ -26,32 +44,20 @@ export function normalizeEndOfDay(dateStr: string): string {
 }
 
 export function defaultStartTime(now: Date = new Date()): string {
-  return `${now.getFullYear()}-09-05T00:00:00`;
+  return `${chinaParts(now).year}-09-05T00:00:00`;
 }
 
 export function defaultEndTime(now: Date = new Date()): string {
-  return `${now.getFullYear()}-09-30T23:59:59`;
+  return `${chinaParts(now).year}-09-30T23:59:59`;
 }
 
 export function parseLocalDateTime(s: string): Date | null {
   if (!s) return null;
   const m = s.trim().match(LOCAL_DT);
   if (!m) return null;
-  const d = new Date(
-    Number(m[1]),
-    Number(m[2]) - 1,
-    Number(m[3]),
-    Number(m[4] || 0),
-    Number(m[5] || 0),
-    Number(m[6] || 0),
-  );
-  if (
-    d.getFullYear() !== Number(m[1]) ||
-    d.getMonth() !== Number(m[2]) - 1 ||
-    d.getDate() !== Number(m[3])
-  ) {
-    return null;
-  }
+  const expected = `${m[1]}-${m[2]}-${m[3]}T${m[4] || "00"}:${m[5] || "00"}:${m[6] || "00"}`;
+  const d = new Date(`${expected}+08:00`);
+  if (Number.isNaN(d.getTime()) || toLocalISO(d) !== expected) return null;
   return d;
 }
 
@@ -81,13 +87,12 @@ export function laterInstant(a: string, b: string): string {
   return aa >= bb ? aa : bb;
 }
 
-export function future(): { mar1: Date; sep1: Date } {
-  const now = new Date();
-  const year = now.getFullYear();
-  const mar1This = new Date(year, 2, 1);
-  const sep1This = new Date(year, 8, 1);
+export function future(now: Date = new Date()): { mar1: Date; sep1: Date } {
+  const year = Number(chinaParts(now).year);
+  const mar1This = new Date(`${year}-03-01T00:00:00+08:00`);
+  const sep1This = new Date(`${year}-09-01T00:00:00+08:00`);
   return {
-    mar1: mar1This > now ? mar1This : new Date(year + 1, 2, 1),
-    sep1: sep1This > now ? sep1This : new Date(year + 1, 8, 1),
+    mar1: mar1This > now ? mar1This : new Date(`${year + 1}-03-01T00:00:00+08:00`),
+    sep1: sep1This > now ? sep1This : new Date(`${year + 1}-09-01T00:00:00+08:00`),
   };
 }
