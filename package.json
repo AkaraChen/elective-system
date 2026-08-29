@@ -22,7 +22,8 @@
     "drizzle-orm": "^0.45.2",
     "ejs": "^3.1",
     "express": "^4.21",
-    "express-session": "^1.18"
+    "express-session": "^1.18",
+    "tsx": "^4.19"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4",
@@ -33,7 +34,6 @@
     "concurrently": "^10.0.4",
     "drizzle-kit": "^0.31.10",
     "tailwindcss": "^3.4.19",
-    "tsx": "^4.19",
     "typescript": "^5.7"
   }
 }
