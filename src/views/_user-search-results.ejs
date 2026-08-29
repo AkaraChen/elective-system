@@ -1,0 +1,5 @@
+<div class="divide-y divide-gray-50">
+  <% matches.forEach(function(u) { %>
+    <%- include('_user-row', { u: u }) %>
+  <% }); %>
+</div>

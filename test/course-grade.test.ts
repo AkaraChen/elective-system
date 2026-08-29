@@ -15,7 +15,9 @@ function createFixture() {
       nickname TEXT NOT NULL,
       password TEXT NOT NULL,
       is_admin INTEGER NOT NULL DEFAULT 0,
-      grade INTEGER
+      grade INTEGER,
+      class_name TEXT,
+      phone TEXT
     );
     CREATE TABLE courses (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

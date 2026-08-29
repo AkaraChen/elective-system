@@ -37,7 +37,7 @@
     </div>
     <% } %>
     <% if (c.description) { %>
-    <p class="text-xs text-gray-400 pt-1"><%= c.description %></p>
+    <p class="course-description-preview text-xs text-gray-400 pt-1"><%= String(c.description).slice(0, 100) %></p>
     <% } %>
   </div>
 

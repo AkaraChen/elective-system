@@ -24,7 +24,7 @@ router.post("/api/login", (req: Request, res: Response) => {
     req.session.userId = user.id;
     req.session.isAdmin = user.isAdmin;
     req.session.save(() => {
-      const redirectTo = user.isAdmin ? "/admin/courses" : "/courses";
+      const redirectTo = user.isAdmin ? "/admin/courses" : user.phone ? "/courses" : "/profile";
       res.redirect(redirectTo);
     });
   });

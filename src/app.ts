@@ -15,6 +15,7 @@ import adminUsersRouter from "./routes/admin-users";
 import authRouter from "./routes/auth";
 import coursesRouter from "./routes/courses";
 import pagesRouter from "./routes/pages";
+import profileRouter from "./routes/profile";
 import selectionsRouter from "./routes/selections";
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -62,6 +63,21 @@ export function createApp() {
   });
 
   app.use((req, res, next) => {
+    const user = res.locals.user as typeof users.$inferSelect | null;
+    if (
+      user &&
+      !user.isAdmin &&
+      !user.phone &&
+      req.path !== "/profile" &&
+      req.path !== "/api/profile" &&
+      req.path !== "/api/logout"
+    ) {
+      return res.redirect("/profile");
+    }
+    next();
+  });
+
+  app.use((req, res, next) => {
     const render = res.render.bind(res);
     const renderWithLayout = function (view: string, options: Record<string, unknown> = {}, callback?: (error: Error, html: string) => void) {
       if (view === "login" || view === "layout" || options.layout === false) {
@@ -79,6 +95,7 @@ export function createApp() {
 
   app.use("/", pagesRouter);
   app.use("/", authRouter);
+  app.use("/", profileRouter);
   app.use("/", coursesRouter);
   app.use("/", selectionsRouter);
   app.use("/", adminCoursesRouter);

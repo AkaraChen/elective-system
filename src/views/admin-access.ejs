@@ -87,7 +87,7 @@
                 <% } else { %>
                   <% existing.forEach(function(s) { %>
                     <span class="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs font-medium text-blue-700" data-user-id="<%= s.userId %>">
-                      <%= s.nickname %>（<%= s.username %>）
+                      <%= s.nickname %>（<%= s.username %>，<%= s.grade == null ? '未设置年级' : s.grade + '级' %>，<%= s.className || '未设置班级' %>，<%= s.phone || '未填写手机号' %>）
                       <button type="button" onclick="removeStudentBadge(this)" class="text-blue-400 hover:text-red-500 hover:bg-red-50 transition-colors mx-0.5" title="移除">×</button>
                     </span>
                   <% }); %>
@@ -242,7 +242,9 @@
 
   function studentLabel(student) {
     var gradeLabel = student.grade == null ? '未设置年级' : student.grade + '级';
-    return student.nickname + '（' + student.username + '，' + gradeLabel + '）';
+    var classLabel = student.className || '未设置班级';
+    var phoneLabel = student.phone || '未填写手机号';
+    return student.nickname + '（' + student.username + '，' + gradeLabel + '，' + classLabel + '，' + phoneLabel + '）';
   }
 
   // ---- PUT 表单提交 ----

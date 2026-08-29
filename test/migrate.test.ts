@@ -50,6 +50,8 @@ describe("KIT-910 sqlite migration", () => {
     assert.ok(!courseCols.some((c) => c.name === "allowed_grade"));
     assert.ok(userCols.some((c) => c.name === "nickname"));
     assert.ok(userCols.some((c) => c.name === "grade"));
+    assert.ok(userCols.some((c) => c.name === "class_name"));
+    assert.ok(userCols.some((c) => c.name === "phone"));
     assert.ok(!userCols.some((c) => c.name === "year"));
     assert.deepEqual(
       sqlite.prepare("SELECT username, nickname, grade FROM users").get(),

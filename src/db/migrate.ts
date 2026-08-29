@@ -27,6 +27,13 @@ export function migrate(sqlite: Database.Database): void {
         sqlite.exec("ALTER TABLE users ADD COLUMN grade INTEGER");
       }
     }
+
+    if (!hasColumn(sqlite, "users", "class_name")) {
+      sqlite.exec("ALTER TABLE users ADD COLUMN class_name TEXT");
+    }
+    if (!hasColumn(sqlite, "users", "phone")) {
+      sqlite.exec("ALTER TABLE users ADD COLUMN phone TEXT");
+    }
   }
 
   if (tableExists(sqlite, "courses") && !hasColumn(sqlite, "courses", "allowed_grades")) {

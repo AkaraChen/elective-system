@@ -13,7 +13,7 @@ const router = Router();
 
 router.get("/admin/class", requireAdmin, (_req: Request, res: Response) => {
   const allStudents = db
-    .select({ id: users.id, username: users.username, nickname: users.nickname, grade: users.grade })
+    .select({ id: users.id, username: users.username, nickname: users.nickname, grade: users.grade, className: users.className, phone: users.phone })
     .from(users)
     .where(eq(users.isAdmin, 0))
     .all();
@@ -47,7 +47,7 @@ router.get("/api/admin/class/courses/search", requireAdmin, (req: Request, res: 
   }
 
   const enrolledStudents = db
-    .select({ id: users.id, username: users.username, nickname: users.nickname, grade: users.grade })
+    .select({ id: users.id, username: users.username, nickname: users.nickname, grade: users.grade, className: users.className, phone: users.phone })
     .from(selections)
     .innerJoin(users, eq(selections.userId, users.id))
     .where(eq(selections.courseId, course.id))
@@ -137,7 +137,7 @@ router.put(
       .get()!;
 
     const enrolledStudents = db
-      .select({ id: users.id, username: users.username, nickname: users.nickname, grade: users.grade })
+      .select({ id: users.id, username: users.username, nickname: users.nickname, grade: users.grade, className: users.className, phone: users.phone })
       .from(selections)
       .innerJoin(users, eq(selections.userId, users.id))
       .where(eq(selections.courseId, courseId))
@@ -315,8 +315,11 @@ type StudentSummary = {
   username: string;
   nickname: string;
   grade: number | null;
+  className: string | null;
+  phone: string | null;
 };
 
 function studentLabel(student: StudentSummary): string {
-  return `${student.nickname}（${student.username}，${student.grade ?? "未设置"}级）`;
+  const grade = student.grade === null ? "未设置年级" : `${student.grade}级`;
+  return `${student.nickname}（${student.username}，${grade}，${student.className || "未设置班级"}，${student.phone || "未填写手机号"}）`;
 }
