@@ -30,7 +30,7 @@
     var anyActive = false;
 
     openBtns.forEach(function(btn) {
-      var openTime = new Date(btn.getAttribute("data-opentime"));
+      var openTime = new Date(btn.getAttribute("data-opentime") + "+08:00");
       var diff = openTime - now;
       if (diff <= 0) {
         btn.textContent = "抢课";
@@ -44,7 +44,7 @@
     });
 
     endSpans.forEach(function(el) {
-      var endTime = new Date(el.getAttribute("data-endtime"));
+      var endTime = new Date(el.getAttribute("data-endtime") + "+08:00");
       var diff = endTime - now;
       if (diff <= 0) {
         el.textContent = "已截止";

@@ -9,6 +9,7 @@ import {
   isValidLocalDateTime,
   normalizeStartOfDay,
   normalizeEndOfDay,
+  future,
 } from "../utils/time";
 import { parseRouteId } from "../utils/parse-id";
 import { parseAllowedGrades, serializeAllowedGrades } from "../utils/grade";
@@ -19,16 +20,12 @@ const router = Router();
 
 function getDefaultOpenTime(): string {
   const now = new Date();
-  const year = now.getFullYear();
-  const mar1This = new Date(year, 2, 1);
-  const sep1This = new Date(year, 8, 1);
-  const mar1 = mar1This > now ? mar1This : new Date(year + 1, 2, 1);
-  const sep1 = sep1This > now ? sep1This : new Date(year + 1, 8, 1);
+  const { mar1, sep1 } = future(now);
   const closer = mar1.getTime() - now.getTime() < sep1.getTime() - now.getTime() ? mar1 : sep1;
   return toLocalISOShort(closer);
 }
 
-const ALLOWED_CONFIG_KEYS = ["end_time", "start_time", "site_title", "max_selections"];
+const ALLOWED_CONFIG_KEYS = ["site_title", "max_selections"];
 
 function parseAllowedGradesInput(raw: unknown): { ok: true; value: string | null } | { ok: false; error: string } {
   if (raw == null || String(raw).trim() === "") return { ok: true, value: null };
@@ -47,7 +44,6 @@ router.get("/admin/courses", requireAdmin, (_req: Request, res: Response) => {
   const maxSelectionsRow = db.select({ value: config.value }).from(config).where(eq(config.key, "max_selections")).get();
   const maxSelections = maxSelectionsRow?.value || "1";
   const defaultOpenTime = getDefaultOpenTime();
-  const minEndDate = startTime.substring(0, 10);
 
   const courseRows = db.all(
     sql`SELECT c.id, c.name, c.teacher, c.description,
@@ -70,7 +66,6 @@ router.get("/admin/courses", requireAdmin, (_req: Request, res: Response) => {
     siteTitle,
     maxSelections,
     defaultOpenTime,
-    minEndDate,
   });
 });
 
@@ -211,6 +206,35 @@ router.delete("/api/admin/courses/:id", requireAdmin, (req: Request, res: Respon
   res.status(200).send("OK");
 });
 
+router.put("/api/admin/selection-window", requireAdmin, (req: Request, res: Response) => {
+  const startTime = String(req.body.startTime || "");
+  const endTime = String(req.body.endTime || "");
+
+  if (!startTime || !endTime) {
+    return res.status(400).send("开始日期和截止日期不能为空");
+  }
+  if (!isValidLocalDateTime(startTime) || !isValidLocalDateTime(endTime)) {
+    return res.status(400).send("开始日期或截止日期格式不正确");
+  }
+  if (startTime.substring(0, 10) > endTime.substring(0, 10)) {
+    return res.status(400).send("开始日期不得晚于截止日期");
+  }
+
+  const values = [
+    { key: "start_time", value: normalizeStartOfDay(startTime) },
+    { key: "end_time", value: normalizeEndOfDay(endTime) },
+  ];
+  db.transaction((tx) => {
+    for (const value of values) {
+      tx.insert(config).values(value)
+        .onConflictDoUpdate({ target: config.key, set: { value: value.value } })
+        .run();
+    }
+  });
+
+  res.redirect("/admin/courses");
+});
+
 router.put("/api/admin/config", requireAdmin, (req: Request, res: Response) => {
   const { key, value } = req.body;
 
@@ -218,16 +242,6 @@ router.put("/api/admin/config", requireAdmin, (req: Request, res: Response) => {
     return res.status(400).send("不可修改的配置项");
   }
 
-  if ((key === "start_time" || key === "end_time") && !value) {
-    return res.status(400).send("开始时间和截止时间不能为空");
-  }
-
-  if (key === "end_time" && value && !isValidLocalDateTime(value)) {
-    return res.status(400).send("截止时间格式不正确");
-  }
-  if (key === "start_time" && value && !isValidLocalDateTime(value)) {
-    return res.status(400).send("开始时间格式不正确");
-  }
   if (key === "max_selections" && (!/^\d+$/.test(String(value)) || Number(value) < 1)) {
     return res.status(400).send("最大选课数必须为正整数");
   }
@@ -236,16 +250,7 @@ router.put("/api/admin/config", requireAdmin, (req: Request, res: Response) => {
   }
 
   let stored = value || "";
-  if (key === "end_time" && stored) stored = normalizeEndOfDay(stored);
-  if (key === "start_time" && stored) stored = normalizeStartOfDay(stored);
   if (key === "site_title") stored = stored.trim();
-
-  if (key === "start_time" && stored >= readEndTime(db)) {
-    return res.status(400).send("开始时间必须早于截止时间");
-  }
-  if (key === "end_time" && stored <= readStartTime(db)) {
-    return res.status(400).send("截止时间必须晚于开始时间");
-  }
 
   db.insert(config).values({ key, value: stored })
     .onConflictDoUpdate({ target: config.key, set: { value: stored } })

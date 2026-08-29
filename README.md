@@ -64,7 +64,7 @@ src/
 ├── services/                # 账号、年级资格与选课规则
 ├── utils/
 │   ├── parse-id.ts          # 路由 ID 参数安全解析
-│   └── time.ts              # 本地时间格式化工具
+│   └── time.ts              # 中国时间格式化工具
 ├── types/
 │   └── express.d.ts         # Session 类型扩展
 └── views/
@@ -98,7 +98,7 @@ src/
 ### 管理端
 
 - 课程 CRUD + 重置名额
-- 设置全局开始时间 `start_time`（默认当年本地 9 月 5 日 00:00:00）和全局截止时间 `end_time`（默认当年本地 9 月 30 日 23:59:59）
+- 设置全局开始时间 `start_time`（默认当年中国时间 9 月 5 日 00:00:00）和全局截止时间 `end_time`（默认当年中国时间 9 月 30 日 23:59:59）
 - 学生年级 `grade` 与课程允许年级 `allowed_grades`（四位年级标识）
 - 管理提前批次（为指定学生对指定课程设置更早的开放时间）
 - 用户管理（增删改查、密码重置）
@@ -113,7 +113,7 @@ src/
 2. 否则使用 `courses.open_time`（默认开放时间）
 3. 再与全局 `start_time` 取较晚值；到达 `end_time` 后全部截止
 
-时间一律按本地时间存储和比较（`YYYY-MM-DDTHH:mm:ss`，不带 `Z` / UTC）。
+时间一律按中国时区 `Asia/Shanghai` 计算，并以本地日历字符串存储和比较（`YYYY-MM-DDTHH:mm:ss`，不带 `Z` / UTC）。
 
 ### 年级限制
 
@@ -139,7 +139,7 @@ npm run db:push          # 推送 Drizzle schema 到数据库
 npm run db:seed          # 写入种子数据
 npm run db:init          # db:push + db:seed
 npm run typecheck        # TypeScript 类型检查
-npm test                 # 年级 / 本地时间 / 选课窗口 / 迁移测试
+npm test                 # 年级 / 中国时间 / 选课窗口 / 迁移测试
 ```
 
 ## 部署
