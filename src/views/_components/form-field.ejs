@@ -27,8 +27,11 @@
     </select>
   <% } else { %>
     <input type="<%= type %>" id="<%= id %>" name="<%= name %>" value="<%= value %>"
-      <%= required ? "required" : "" %> placeholder="<%= placeholder %>" <%= autocomplete ? 'autocomplete="' + autocomplete + '"' : '' %>
-      <%= pattern ? 'pattern="' + pattern + '"' : '' %> <%= inputmode ? 'inputmode="' + inputmode + '"' : '' %> <%= maxlength ? 'maxlength="' + maxlength + '"' : '' %>
+      <%= required ? "required" : "" %> placeholder="<%= placeholder %>"
+      <% if (autocomplete) { %>autocomplete="<%= autocomplete %>"<% } %>
+      <% if (pattern) { %>pattern="<%= pattern %>"<% } %>
+      <% if (inputmode) { %>inputmode="<%= inputmode %>"<% } %>
+      <% if (maxlength) { %>maxlength="<%= maxlength %>"<% } %>
       class="w-full rounded-lg border <%= error ? 'border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500' %> px-3 py-2 text-sm shadow-sm focus:outline-none" />
   <% } %>
   <% if (error) { %>
