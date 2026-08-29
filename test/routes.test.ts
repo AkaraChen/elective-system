@@ -295,6 +295,17 @@ describe("grade and selection routes", () => {
 
   it("lets administrators edit student phone and class and rejects invalid phones", async () => {
     const admin = await login("admin", "123");
+    const usersPage = await fetch(`${baseUrl}/admin/users`, { headers: { cookie: admin.cookie } });
+    const usersHtml = await usersPage.text();
+    assert.match(
+      usersHtml,
+      /name="phone"[\s\S]*?pattern="1\[3-9\]\[0-9\]\{9\}"[\s\S]*?inputmode="numeric"[\s\S]*?maxlength="11"/,
+    );
+    assert.doesNotMatch(usersHtml, /(?:pattern|inputmode|maxlength)=&#34;/);
+    const adminRow = usersHtml.match(/id="user-row-1"([\s\S]*?)id="edit-user-1"/)?.[1] || "";
+    assert.match(adminRow, /lg:grid-cols-8/);
+    assert.doesNotMatch(adminRow, /md:(?:block|hidden|justify-center|pt-0)/);
+
     const invalid = await fetch(`${baseUrl}/api/admin/users/2`, {
       method: "PUT",
       headers: {

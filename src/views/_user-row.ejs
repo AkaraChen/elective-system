@@ -1,23 +1,23 @@
 <div id="user-wrapper-<%= u.id %>">
   <div id="user-row-<%= u.id %>" class="grid grid-cols-1 lg:grid-cols-8 gap-x-2 gap-y-1.5 px-6 py-3 items-center hover:bg-gray-50 transition-colors">
-    <div class="flex justify-between md:block">
-      <span class="text-xs text-gray-400 md:hidden">ID</span>
+    <div class="flex justify-between lg:block">
+      <span class="text-xs text-gray-400 lg:hidden">ID</span>
       <span class="text-sm text-gray-500"><%= u.id %></span>
     </div>
-    <div class="flex justify-between md:block">
-      <span class="text-xs text-gray-400 md:hidden">用户名</span>
+    <div class="flex justify-between lg:block">
+      <span class="text-xs text-gray-400 lg:hidden">用户名</span>
       <span class="text-sm font-medium text-gray-900"><%= u.username %></span>
     </div>
-    <div class="flex justify-between md:block">
-      <span class="text-xs text-gray-400 md:hidden">昵称</span>
+    <div class="flex justify-between lg:block">
+      <span class="text-xs text-gray-400 lg:hidden">昵称</span>
       <span class="text-sm text-gray-700"><%= u.nickname %></span>
     </div>
-    <div class="flex justify-between md:block">
-      <span class="text-xs text-gray-400 md:hidden">角色</span>
+    <div class="flex justify-between lg:block">
+      <span class="text-xs text-gray-400 lg:hidden">角色</span>
       <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <%= u.isAdmin ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800' %>"><%= u.isAdmin ? "管理员" : "学生" %></span>
     </div>
-    <div class="flex justify-between md:block">
-      <span class="text-xs text-gray-400 md:hidden">年级</span>
+    <div class="flex justify-between lg:block">
+      <span class="text-xs text-gray-400 lg:hidden">年级</span>
       <span class="text-sm text-gray-600"><%= u.grade ? u.grade + '级' : '-' %></span>
     </div>
     <div class="flex justify-between lg:block">
@@ -28,7 +28,7 @@
       <span class="text-xs text-gray-400 lg:hidden">手机号</span>
       <span class="text-sm text-gray-600"><%= u.phone || '-' %></span>
     </div>
-    <div class="flex justify-end md:justify-center gap-1 pt-1 md:pt-0">
+    <div class="flex justify-end lg:justify-center gap-1 pt-1 lg:pt-0">
       <button onclick="document.getElementById('edit-user-<%= u.id %>').classList.toggle('hidden')" class="text-xs font-medium rounded-lg px-2.5 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors">编辑</button>
       <button hx-delete="/api/admin/users/<%= u.id %>"
               hx-confirm="确定删除该用户？将级联删除其选课和access记录。"
