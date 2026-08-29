@@ -6,6 +6,9 @@
   var placeholder = locals.placeholder !== undefined ? locals.placeholder : "";
   var required = locals.required !== undefined && locals.required;
   var autocomplete = locals.autocomplete !== undefined ? locals.autocomplete : "";
+  var pattern = locals.pattern !== undefined ? locals.pattern : "";
+  var inputmode = locals.inputmode !== undefined ? locals.inputmode : "";
+  var maxlength = locals.maxlength !== undefined ? locals.maxlength : "";
   var error = locals.error !== undefined && locals.error;
   var id = "field-" + name;
 %>
@@ -25,6 +28,7 @@
   <% } else { %>
     <input type="<%= type %>" id="<%= id %>" name="<%= name %>" value="<%= value %>"
       <%= required ? "required" : "" %> placeholder="<%= placeholder %>" <%= autocomplete ? 'autocomplete="' + autocomplete + '"' : '' %>
+      <%= pattern ? 'pattern="' + pattern + '"' : '' %> <%= inputmode ? 'inputmode="' + inputmode + '"' : '' %> <%= maxlength ? 'maxlength="' + maxlength + '"' : '' %>
       class="w-full rounded-lg border <%= error ? 'border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500' %> px-3 py-2 text-sm shadow-sm focus:outline-none" />
   <% } %>
   <% if (error) { %>

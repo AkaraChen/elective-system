@@ -106,6 +106,12 @@
             <span class="text-xs text-gray-400">地点</span>
             <span class="text-sm text-gray-600"><%= c.location || "-" %></span>
           </div>
+          <% if (c.description) { %>
+            <div class="flex justify-between gap-4">
+              <span class="text-xs text-gray-400 shrink-0">课程描述</span>
+              <span class="course-description-preview text-sm text-gray-600 text-right"><%= String(c.description).slice(0, 100) %></span>
+            </div>
+          <% } %>
           <div class="flex justify-between">
             <span class="text-xs text-gray-400">开放时间</span>
             <span class="text-sm text-gray-600"><%= c.openTime ? c.openTime.substring(0, 10) : "-" %></span>

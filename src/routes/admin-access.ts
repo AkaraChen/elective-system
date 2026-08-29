@@ -19,7 +19,14 @@ router.get("/admin/access", requireAdmin, (_req: Request, res: Response) => {
   ) as any[];
 
   const allCourses = db.select().from(courses).all();
-  const allStudents = db.select().from(users).where(eq(users.isAdmin, 0)).all();
+  const allStudents = db.select({
+    id: users.id,
+    username: users.username,
+    nickname: users.nickname,
+    grade: users.grade,
+    className: users.className,
+    phone: users.phone,
+  }).from(users).where(eq(users.isAdmin, 0)).all();
 
   const auRows = db
     .select({
@@ -27,15 +34,18 @@ router.get("/admin/access", requireAdmin, (_req: Request, res: Response) => {
       userId: accessUsers.userId,
       username: users.username,
       nickname: users.nickname,
+      grade: users.grade,
+      className: users.className,
+      phone: users.phone,
     })
     .from(accessUsers)
     .innerJoin(users, eq(accessUsers.userId, users.id))
     .all();
 
-  const accessStudents: Record<number, { userId: number; username: string; nickname: string }[]> = {};
+  const accessStudents: Record<number, typeof auRows> = {};
   auRows.forEach((r) => {
     if (!accessStudents[r.accessId]) accessStudents[r.accessId] = [];
-    accessStudents[r.accessId].push({ userId: r.userId, username: r.username, nickname: r.nickname });
+    accessStudents[r.accessId].push(r);
   });
 
   res.render("admin-access", {

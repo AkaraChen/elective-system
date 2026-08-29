@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { eq, and, count, ne } from "drizzle-orm";
+import { eq, and, count, ne, or } from "drizzle-orm";
 import bcryptjs from "bcryptjs";
 import { db } from "../db/index";
 import { users, selections, accessUsers } from "../db/schema";
@@ -7,6 +7,7 @@ import { requireAdmin } from "../middleware/auth";
 import { parseRouteId } from "../utils/parse-id";
 import { parseAccountInput } from "../services/account";
 import { removeUserIneligibleSelections } from "../services/course-grade";
+import { PHONE_PATTERN_SOURCE } from "../utils/phone";
 
 const router = Router();
 
@@ -16,25 +17,34 @@ router.get("/admin/users", requireAdmin, (_req: Request, res: Response) => {
   res.render("admin-users", {
     title: "用户管理",
     admins,
+    phonePattern: PHONE_PATTERN_SOURCE,
   });
 });
 
 router.get("/api/admin/users/search", requireAdmin, (req: Request, res: Response) => {
-  const { username } = req.query;
-  if (!username || typeof username !== "string" || !username.trim()) {
-    return res.send(`<div class="px-6 py-4 text-sm text-gray-500">请输入用户名</div>`);
+  const rawKeyword = req.query.keyword ?? req.query.username;
+  if (!rawKeyword || typeof rawKeyword !== "string" || !rawKeyword.trim()) {
+    return res.send(`<div class="px-6 py-4 text-sm text-gray-500">请输入用户名或昵称</div>`);
+  }
+  const keyword = rawKeyword.trim();
+
+  const matches = db.select().from(users)
+    .where(and(
+      eq(users.isAdmin, 0),
+      or(eq(users.username, keyword), eq(users.nickname, keyword)),
+    ))
+    .orderBy(users.id)
+    .all();
+
+  if (matches.length === 0) {
+    return res.send(`<div class="px-6 py-4 text-sm text-red-500">未找到学生 "${escapeHtml(keyword)}"</div>`);
   }
 
-  const user = db.select().from(users)
-    .where(and(eq(users.username, username.trim()), eq(users.isAdmin, 0)))
-    .get();
-
-  if (!user) {
-    return res.send(`<div class="px-6 py-4 text-sm text-red-500">未找到学生 "${escapeHtml(username.trim())}"</div>`);
-  }
-
-  const u = { ...user, isAdmin: user.isAdmin as unknown as number };
-  res.render("_user-row", { u, layout: false });
+  res.render("_user-search-results", {
+    matches,
+    phonePattern: PHONE_PATTERN_SOURCE,
+    layout: false,
+  });
 });
 
 router.post("/api/admin/users", requireAdmin, (req: Request, res: Response) => {
@@ -48,6 +58,8 @@ router.post("/api/admin/users", requireAdmin, (req: Request, res: Response) => {
     username: req.body.username,
     nickname: req.body.nickname,
     grade: req.body.grade,
+    className: req.body.className,
+    phone: req.body.phone,
     isAdmin: asAdmin,
   });
   if (!account.ok) return res.status(400).send(account.error);
@@ -92,6 +104,8 @@ router.put("/api/admin/users/:id", requireAdmin, (req: Request, res: Response) =
     username: req.body.username ?? existing.username,
     nickname: req.body.nickname ?? existing.nickname,
     grade: req.body.grade ?? existing.grade,
+    className: req.body.className ?? existing.className,
+    phone: req.body.phone ?? existing.phone,
     isAdmin: asAdmin,
   });
   if (!account.ok) return res.status(400).send(account.error);

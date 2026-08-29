@@ -100,7 +100,9 @@
 
   function studentLabel(student) {
     var gradeLabel = student.grade == null ? '未设置年级' : student.grade + '级';
-    return student.nickname + '（' + student.username + '，' + gradeLabel + '）';
+    var classLabel = student.className || '未设置班级';
+    var phoneLabel = student.phone || '未填写手机号';
+    return student.nickname + '（' + student.username + '，' + gradeLabel + '，' + classLabel + '，' + phoneLabel + '）';
   }
 
   document.addEventListener('submit', function(e) {

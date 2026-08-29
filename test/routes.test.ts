@@ -199,9 +199,191 @@ describe("grade and selection routes", () => {
       ],
     );
   });
+
+  it("forces a student without a phone to complete the profile before accessing the system", async () => {
+    const original = rawDb!.prepare("SELECT password, grade, class_name, phone FROM users WHERE id = 2").get() as {
+      password: string;
+      grade: number;
+      class_name: string | null;
+      phone: string | null;
+    };
+    rawDb!.prepare("UPDATE users SET phone = NULL, class_name = NULL WHERE id = 2").run();
+
+    try {
+      const student = await login("student", "123");
+      assert.equal(student.redirect, "/profile");
+
+      const blockedPage = await fetch(`${baseUrl}/courses`, {
+        redirect: "manual",
+        headers: { cookie: student.cookie },
+      });
+      assert.equal(blockedPage.status, 302);
+      assert.equal(blockedPage.headers.get("location"), "/profile");
+
+      const profilePage = await fetch(`${baseUrl}/profile`, { headers: { cookie: student.cookie } });
+      const profileHtml = await profilePage.text();
+      assert.equal(profilePage.status, 200);
+      assert.match(profileHtml, /必须填写后访问/);
+      assert.match(profileHtml, /pattern="1\[3-9\]\[0-9\]\{9\}"/);
+
+      const blockedSelection = await fetch(`${baseUrl}/api/courses/1/select`, {
+        method: "POST",
+        redirect: "manual",
+        headers: {
+          cookie: student.cookie,
+          "content-type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({ _csrf: student.csrf }),
+      });
+      assert.equal(blockedSelection.status, 302);
+      assert.equal(blockedSelection.headers.get("location"), "/profile");
+
+      const invalid = await fetch(`${baseUrl}/api/profile`, {
+        method: "POST",
+        headers: {
+          cookie: student.cookie,
+          "content-type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          _csrf: student.csrf,
+          phone: "123",
+          className: "高三（1）班",
+          grade: "2026",
+          password: "",
+        }),
+      });
+      assert.equal(invalid.status, 400);
+      assert.match(await invalid.text(), /手机号格式不正确/);
+
+      const saved = await fetch(`${baseUrl}/api/profile`, {
+        method: "POST",
+        redirect: "manual",
+        headers: {
+          cookie: student.cookie,
+          "content-type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          _csrf: student.csrf,
+          phone: "13800138000",
+          className: "高三（1）班",
+          grade: "2027",
+          password: "new-password",
+        }),
+      });
+      assert.equal(saved.status, 302);
+      assert.equal(saved.headers.get("location"), "/courses");
+
+      const updated = rawDb!.prepare("SELECT password, grade, class_name, phone FROM users WHERE id = 2").get() as {
+        password: string;
+        grade: number;
+        class_name: string;
+        phone: string;
+      };
+      assert.equal(updated.grade, 2027);
+      assert.equal(updated.class_name, "高三（1）班");
+      assert.equal(updated.phone, "13800138000");
+      assert.equal(bcryptjs.compareSync("new-password", updated.password), true);
+      assert.equal(bcryptjs.compareSync("123", updated.password), false);
+
+      const restoredAccess = await fetch(`${baseUrl}/courses`, { headers: { cookie: student.cookie } });
+      assert.equal(restoredAccess.status, 200);
+    } finally {
+      rawDb!.prepare("UPDATE users SET password = ?, grade = ?, class_name = ?, phone = ? WHERE id = 2")
+        .run(original.password, original.grade, original.class_name, original.phone);
+    }
+  });
+
+  it("lets administrators edit student phone and class and rejects invalid phones", async () => {
+    const admin = await login("admin", "123");
+    const invalid = await fetch(`${baseUrl}/api/admin/users/2`, {
+      method: "PUT",
+      headers: {
+        cookie: admin.cookie,
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        _csrf: admin.csrf,
+        username: "student",
+        nickname: "Student Nickname",
+        isAdmin: "0",
+        grade: "2026",
+        className: "高三（2）班",
+        phone: "123",
+      }),
+    });
+    assert.equal(invalid.status, 400);
+    assert.match(await invalid.text(), /手机号格式不正确/);
+
+    const saved = await fetch(`${baseUrl}/api/admin/users/2`, {
+      method: "PUT",
+      redirect: "manual",
+      headers: {
+        cookie: admin.cookie,
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        _csrf: admin.csrf,
+        username: "student",
+        nickname: "Student Nickname",
+        isAdmin: "0",
+        grade: "2026",
+        className: "高三（2）班",
+        phone: "13900139000",
+      }),
+    });
+    assert.equal(saved.status, 302);
+    assert.deepEqual(
+      rawDb!.prepare("SELECT class_name, phone FROM users WHERE id = 2").get(),
+      { class_name: "高三（2）班", phone: "13900139000" },
+    );
+
+    for (const path of ["/admin/access", "/admin/class"]) {
+      const page = await fetch(`${baseUrl}${path}`, { headers: { cookie: admin.cookie } });
+      const html = await page.text();
+      assert.equal(page.status, 200);
+      assert.match(html, /高三（2）班/);
+      assert.match(html, /13900139000/);
+    }
+  });
+
+  it("finds every student sharing an exact nickname and shows profile fields", async () => {
+    const password = bcryptjs.hashSync("123", 4);
+    rawDb!.prepare("INSERT INTO users (username, nickname, password, is_admin, grade, class_name, phone) VALUES (?, ?, ?, 0, ?, ?, ?)")
+      .run("same-nick-a", "同名<&查询", password, 2026, "一班", "13700137000");
+    rawDb!.prepare("INSERT INTO users (username, nickname, password, is_admin, grade, class_name, phone) VALUES (?, ?, ?, 0, ?, ?, ?)")
+      .run("same-nick-b", "同名<&查询", password, 2027, "二班", "13600136000");
+
+    const admin = await login("admin", "123");
+    const response = await fetch(`${baseUrl}/api/admin/users/search?keyword=${encodeURIComponent("同名<&查询")}`, {
+      headers: { cookie: admin.cookie },
+    });
+    const html = await response.text();
+
+    assert.equal(response.status, 200);
+    assert.match(html, /same-nick-a/);
+    assert.match(html, /same-nick-b/);
+    assert.match(html, /同名&lt;&amp;查询/);
+    assert.match(html, /一班/);
+    assert.match(html, /13700137000/);
+  });
+
+  it("limits course description previews to 100 characters on student and admin cards", async () => {
+    const description = "A".repeat(100) + "TAIL";
+    rawDb!.prepare("UPDATE courses SET description = ? WHERE id = 1").run(description);
+
+    const student = await login("student", "123");
+    const studentPage = await fetch(`${baseUrl}/courses`, { headers: { cookie: student.cookie } });
+    const studentPreview = extractDescriptionPreview(await studentPage.text());
+    assert.equal(studentPreview, "A".repeat(100));
+
+    const admin = await login("admin", "123");
+    const adminPage = await fetch(`${baseUrl}/admin/courses`, { headers: { cookie: admin.cookie } });
+    const adminPreview = extractDescriptionPreview(await adminPage.text());
+    assert.equal(adminPreview, "A".repeat(100));
+  });
 });
 
-async function login(username: string, password: string): Promise<{ cookie: string; csrf: string }> {
+async function login(username: string, password: string): Promise<{ cookie: string; csrf: string; redirect: string | null }> {
   const page = await fetch(`${baseUrl}/login`);
   const initialCookie = cookieValue(page.headers.get("set-cookie"));
   const csrf = extractCsrf(await page.text());
@@ -222,7 +404,14 @@ async function login(username: string, password: string): Promise<{ cookie: stri
   return {
     cookie: authenticatedCookie,
     csrf: extractCsrf(await authenticatedPage.text()),
+    redirect: response.headers.get("location"),
   };
+}
+
+function extractDescriptionPreview(html: string): string {
+  const match = html.match(/class="course-description-preview[^"]*">([^<]*)<\/[^>]+>/);
+  assert.ok(match);
+  return match[1];
 }
 
 function cookieValue(header: string | null): string {
@@ -244,7 +433,9 @@ function createSchema() {
       nickname TEXT NOT NULL,
       password TEXT NOT NULL,
       is_admin INTEGER NOT NULL DEFAULT 0,
-      grade INTEGER
+      grade INTEGER,
+      class_name TEXT,
+      phone TEXT
     );
     CREATE TABLE courses (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -282,10 +473,10 @@ function createSchema() {
 
 function seedFixture(sqlite: Database.Database) {
   const password = bcryptjs.hashSync("123", 4);
-  sqlite.prepare("INSERT INTO users (username, nickname, password, is_admin, grade) VALUES (?, ?, ?, ?, ?)")
-    .run("admin", "Admin Nickname", password, 1, null);
-  sqlite.prepare("INSERT INTO users (username, nickname, password, is_admin, grade) VALUES (?, ?, ?, ?, ?)")
-    .run("student", "Student Nickname", password, 0, 2026);
+  sqlite.prepare("INSERT INTO users (username, nickname, password, is_admin, grade, phone) VALUES (?, ?, ?, ?, ?, ?)")
+    .run("admin", "Admin Nickname", password, 1, null, null);
+  sqlite.prepare("INSERT INTO users (username, nickname, password, is_admin, grade, phone) VALUES (?, ?, ?, ?, ?, ?)")
+    .run("student", "Student Nickname", password, 0, 2026, "13800138000");
   sqlite.prepare("INSERT INTO courses (name, teacher, total_seats, available_seats, open_time, allowed_grades) VALUES (?, ?, ?, ?, ?, ?)")
     .run("Allowed course", "Teacher", 10, 10, "2999-01-01T00:00:00", "2026");
   sqlite.prepare("INSERT INTO courses (name, teacher, total_seats, available_seats, open_time, allowed_grades) VALUES (?, ?, ?, ?, ?, ?)")

@@ -7,6 +7,8 @@ export const users = sqliteTable("users", {
   password: text("password").notNull(),
   isAdmin: integer("is_admin").notNull().default(0),
   grade: integer("grade"),
+  className: text("class_name"),
+  phone: text("phone"),
 });
 
 export const courses = sqliteTable("courses", {
