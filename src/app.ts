@@ -17,6 +17,7 @@ import coursesRouter from "./routes/courses";
 import pagesRouter from "./routes/pages";
 import profileRouter from "./routes/profile";
 import selectionsRouter from "./routes/selections";
+import { linkifyStudentNotice } from "./utils/student-notice";
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 
@@ -59,6 +60,10 @@ export function createApp() {
       : null;
     const siteTitle = db.select({ value: config.value }).from(config).where(eq(config.key, "site_title")).get();
     res.locals.siteTitle = siteTitle?.value || "选课系统";
+    const studentNotice = db.select({ value: config.value }).from(config).where(eq(config.key, "student_notice")).get()?.value.trim() || "";
+    res.locals.studentNoticeSegments = res.locals.user && !res.locals.user.isAdmin && res.locals.user.phone && studentNotice
+      ? linkifyStudentNotice(studentNotice)
+      : [];
     next();
   });
 

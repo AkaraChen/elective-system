@@ -2,6 +2,7 @@ import { parseGrade } from "../utils/grade";
 import { isValidPhone, normalizePhone } from "../utils/phone";
 
 export type ProfileInput = {
+  nickname: string;
   grade: number;
   className: string | null;
   phone: string;
@@ -9,11 +10,20 @@ export type ProfileInput = {
 };
 
 export function parseProfileInput(input: {
+  nickname: unknown;
   grade: unknown;
   className: unknown;
   phone: unknown;
   password: unknown;
 }): { ok: true; value: ProfileInput } | { ok: false; error: string } {
+  const nickname = typeof input.nickname === "string" ? input.nickname.trim() : "";
+  if (!nickname) {
+    return { ok: false, error: "昵称不能为空" };
+  }
+  if (nickname.length > 100) {
+    return { ok: false, error: "昵称不能超过100个字符" };
+  }
+
   const grade = parseGrade(input.grade);
   if (grade === null) {
     return { ok: false, error: "学生年级必须是4位数字，例如2026" };
@@ -22,6 +32,9 @@ export function parseProfileInput(input: {
   const className = typeof input.className === "string" ? input.className.trim() : "";
   if (className.length > 100) {
     return { ok: false, error: "班级不能超过100个字符" };
+  }
+  if (className && !/^\d+$/.test(className)) {
+    return { ok: false, error: "班级必须是数字" };
   }
 
   const phone = normalizePhone(input.phone);
@@ -40,6 +53,7 @@ export function parseProfileInput(input: {
   return {
     ok: true,
     value: {
+      nickname,
       grade,
       className: className || null,
       phone,

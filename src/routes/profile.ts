@@ -28,6 +28,7 @@ router.post("/api/profile", requireAuth, (req: Request, res: Response) => {
   if (user.isAdmin) return res.status(403).send("管理员不能修改学生资料");
 
   const profile = parseProfileInput({
+    nickname: req.body.nickname,
     grade: req.body.grade,
     className: req.body.className,
     phone: req.body.phone,
@@ -40,6 +41,7 @@ router.post("/api/profile", requireAuth, (req: Request, res: Response) => {
       phonePattern: PHONE_PATTERN_SOURCE,
       profile: {
         ...user,
+        nickname: typeof req.body.nickname === "string" ? req.body.nickname : "",
         grade: req.body.grade,
         className: typeof req.body.className === "string" ? req.body.className : "",
         phone: typeof req.body.phone === "string" ? req.body.phone : "",
@@ -48,6 +50,7 @@ router.post("/api/profile", requireAuth, (req: Request, res: Response) => {
   }
 
   const updateData: Partial<typeof users.$inferInsert> = {
+    nickname: profile.value.nickname,
     grade: profile.value.grade,
     className: profile.value.className,
     phone: profile.value.phone,

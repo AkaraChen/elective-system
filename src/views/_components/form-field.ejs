@@ -9,6 +9,9 @@
   var pattern = locals.pattern !== undefined ? locals.pattern : "";
   var inputmode = locals.inputmode !== undefined ? locals.inputmode : "";
   var maxlength = locals.maxlength !== undefined ? locals.maxlength : "";
+  var min = locals.min !== undefined ? locals.min : "";
+  var max = locals.max !== undefined ? locals.max : "";
+  var step = locals.step !== undefined ? locals.step : "";
   var error = locals.error !== undefined && locals.error;
   var id = "field-" + name;
 %>
@@ -32,6 +35,9 @@
       <% if (pattern) { %>pattern="<%= pattern %>"<% } %>
       <% if (inputmode) { %>inputmode="<%= inputmode %>"<% } %>
       <% if (maxlength) { %>maxlength="<%= maxlength %>"<% } %>
+      <% if (min !== "") { %>min="<%= min %>"<% } %>
+      <% if (max !== "") { %>max="<%= max %>"<% } %>
+      <% if (step !== "") { %>step="<%= step %>"<% } %>
       class="w-full rounded-lg border <%= error ? 'border-red-300 text-red-900 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500' %> px-3 py-2 text-sm shadow-sm focus:outline-none" />
   <% } %>
   <% if (error) { %>
