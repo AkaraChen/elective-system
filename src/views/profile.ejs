@@ -25,7 +25,7 @@
     </div>
 
     <%- include('_components/form-field', { label: '班级', name: 'className', value: profile.className || '', pattern: '[0-9]+', inputmode: 'numeric', maxlength: 100 }) %>
-    <%- include('_components/form-field', { label: '年级', name: 'grade', type: 'number', value: profile.grade == null ? '' : String(profile.grade), required: true, min: 1000, max: 9999, step: 1, placeholder: '例如 2026' }) %>
+    <%- include('_components/form-field', { label: '年级', name: 'grade', type: 'text', value: profile.grade == null ? '' : String(profile.grade), required: true, pattern: '[0-9]{4}', inputmode: 'numeric', maxlength: 4, placeholder: '例如 2026' }) %>
     <%- include('_components/form-field', { label: '新密码（留空不修改）', name: 'password', type: 'password', maxlength: 200, autocomplete: 'new-password', placeholder: '留空不修改' }) %>
 
     <button type="submit" class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700">保存资料</button>

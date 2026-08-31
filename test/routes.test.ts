@@ -230,7 +230,10 @@ describe("grade and selection routes", () => {
       assert.match(profileHtml, /pattern="1\[3-9\]\[0-9\]\{9\}"/);
       assert.match(profileHtml, /name="nickname" value="Student Nickname"/);
       assert.match(profileHtml, /name="className"[\s\S]*?pattern="\[0-9\]\+"[\s\S]*?inputmode="numeric"/);
-      assert.match(profileHtml, /name="grade"[\s\S]*?min="1000"[\s\S]*?max="9999"[\s\S]*?step="1"/);
+      assert.match(
+        profileHtml,
+        /type="text"[^>]*name="grade"[^>]*pattern="\[0-9\]\{4\}"[^>]*inputmode="numeric"[^>]*maxlength="4"/,
+      );
       assert.doesNotMatch(profileHtml, /高三（1）班/);
       assert.doesNotMatch(profileHtml, /id="student-notice"/);
 
@@ -339,6 +342,14 @@ describe("grade and selection routes", () => {
     );
     assert.doesNotMatch(usersHtml, /(?:pattern|inputmode|maxlength)=&#34;/);
     assert.match(usersHtml, /name="className"[\s\S]*?pattern="\[0-9\]\+"[\s\S]*?inputmode="numeric"/);
+    const gradeFields = usersHtml.match(/<input[^>]*name="grade"[^>]*>/g) || [];
+    assert.ok(gradeFields.length >= 2);
+    for (const gradeField of gradeFields) {
+      assert.match(gradeField, /type="text"/);
+      assert.match(gradeField, /pattern="\[0-9\]\{4\}"/);
+      assert.match(gradeField, /inputmode="numeric"/);
+      assert.match(gradeField, /maxlength="4"/);
+    }
     const adminRow = usersHtml.match(/id="user-row-1"([\s\S]*?)id="edit-user-1"/)?.[1] || "";
     assert.match(adminRow, /lg:grid-cols-8/);
     assert.doesNotMatch(adminRow, /md:(?:block|hidden|justify-center|pt-0)/);
