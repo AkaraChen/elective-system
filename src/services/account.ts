@@ -27,6 +27,7 @@ export function parseAccountInput(input: {
   if (!nickname) return { ok: false, error: "昵称不能为空" };
   if (nickname.length > 100) return { ok: false, error: "昵称不能超过100个字符" };
   if (className.length > 100) return { ok: false, error: "班级不能超过100个字符" };
+  if (className && !/^\d+$/.test(className)) return { ok: false, error: "班级必须是数字" };
   if (phone && !isValidPhone(phone)) {
     return { ok: false, error: "手机号格式不正确，请输入11位中国大陆手机号" };
   }

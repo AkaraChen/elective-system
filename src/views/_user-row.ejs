@@ -46,8 +46,8 @@
         <%- include('_components/form-field', { label: '昵称', name: 'nickname', value: u.nickname, required: true }) %>
         <%- include('_components/form-field', { label: '新密码（留空不修改）', name: 'password', type: 'password', placeholder: '留空不修改' }) %>
         <%- include('_components/form-field', { label: '角色', name: 'isAdmin', type: 'select', options: '<option value="0"' + (!u.isAdmin ? ' selected' : '') + '>学生</option><option value="1"' + (u.isAdmin ? ' selected' : '') + '>管理员</option>' }) %>
-        <%- include('_components/form-field', { label: '年级', name: 'grade', type: 'number', value: u.grade ? String(u.grade) : '', placeholder: '例如 2026' }) %>
-        <%- include('_components/form-field', { label: '班级', name: 'className', value: u.className || '', maxlength: 100, placeholder: '例如 高三（1）班' }) %>
+        <%- include('_components/form-field', { label: '年级', name: 'grade', type: 'number', value: u.grade ? String(u.grade) : '', min: 1000, max: 9999, step: 1, placeholder: '例如 2026' }) %>
+        <%- include('_components/form-field', { label: '班级', name: 'className', value: u.className || '', pattern: '[0-9]+', inputmode: 'numeric', maxlength: 100 }) %>
         <%- include('_components/form-field', { label: '手机号', name: 'phone', type: 'tel', value: u.phone || '', pattern: phonePattern, inputmode: 'numeric', maxlength: 11, placeholder: '学生可稍后补填' }) %>
       </div>
       <div class="flex items-center gap-2 pt-2">

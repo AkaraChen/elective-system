@@ -9,8 +9,8 @@
       <%- include('_components/form-field', { label: '昵称', name: 'nickname', required: true }) %>
       <%- include('_components/form-field', { label: '密码', name: 'password', type: 'password', required: true }) %>
       <%- include('_components/form-field', { label: '角色', name: 'isAdmin', type: 'select', required: true, options: '<option value="0">学生</option><option value="1">管理员</option>' }) %>
-      <%- include('_components/form-field', { label: '年级', name: 'grade', type: 'number', placeholder: '例如 2026' }) %>
-      <%- include('_components/form-field', { label: '班级', name: 'className', maxlength: 100, placeholder: '例如 高三（1）班' }) %>
+      <%- include('_components/form-field', { label: '年级', name: 'grade', type: 'number', min: 1000, max: 9999, step: 1, placeholder: '例如 2026' }) %>
+      <%- include('_components/form-field', { label: '班级', name: 'className', pattern: '[0-9]+', inputmode: 'numeric', maxlength: 100 }) %>
       <%- include('_components/form-field', { label: '手机号', name: 'phone', type: 'tel', pattern: phonePattern, inputmode: 'numeric', maxlength: 11, placeholder: '学生可稍后补填' }) %>
     </div>
     <button type="submit" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors mt-2">创建用户</button>

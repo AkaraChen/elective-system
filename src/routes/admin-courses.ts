@@ -25,7 +25,7 @@ function getDefaultOpenTime(): string {
   return toLocalISOShort(closer);
 }
 
-const ALLOWED_CONFIG_KEYS = ["site_title", "max_selections"];
+const ALLOWED_CONFIG_KEYS = ["site_title", "max_selections", "student_notice"];
 
 function parseAllowedGradesInput(raw: unknown): { ok: true; value: string | null } | { ok: false; error: string } {
   if (raw == null || String(raw).trim() === "") return { ok: true, value: null };
@@ -43,6 +43,7 @@ router.get("/admin/courses", requireAdmin, (_req: Request, res: Response) => {
   const siteTitle = siteTitleRow?.value || "选课系统";
   const maxSelectionsRow = db.select({ value: config.value }).from(config).where(eq(config.key, "max_selections")).get();
   const maxSelections = maxSelectionsRow?.value || "1";
+  const studentNotice = db.select({ value: config.value }).from(config).where(eq(config.key, "student_notice")).get()?.value || "";
   const defaultOpenTime = getDefaultOpenTime();
 
   const courseRows = db.all(
@@ -65,6 +66,7 @@ router.get("/admin/courses", requireAdmin, (_req: Request, res: Response) => {
     startTime,
     siteTitle,
     maxSelections,
+    studentNotice,
     defaultOpenTime,
   });
 });
@@ -248,9 +250,13 @@ router.put("/api/admin/config", requireAdmin, (req: Request, res: Response) => {
   if (key === "site_title" && !String(value || "").trim()) {
     return res.status(400).send("显示标题不能为空");
   }
+  if (key === "student_notice" && String(value || "").length > 2000) {
+    return res.status(400).send("学生通知不能超过2000个字符");
+  }
 
   let stored = value || "";
   if (key === "site_title") stored = stored.trim();
+  if (key === "student_notice") stored = String(stored).trim();
 
   db.insert(config).values({ key, value: stored })
     .onConflictDoUpdate({ target: config.key, set: { value: stored } })
