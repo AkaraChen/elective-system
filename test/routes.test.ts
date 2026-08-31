@@ -322,6 +322,11 @@ describe("grade and selection routes", () => {
       const restoredHtml = await restoredAccess.text();
       assert.equal(restoredAccess.status, 200);
       assert.match(restoredHtml, /id="student-notice"/);
+      const noticeTag = restoredHtml.match(/<div id="student-notice"[^>]*>/)?.[0] || "";
+      assert.match(noticeTag, /class="[^"]*\bfixed\b/);
+      assert.match(noticeTag, /\bleft-1\/2\b/);
+      assert.match(noticeTag, /\btop-\[4\.5rem\]/);
+      assert.doesNotMatch(noticeTag, /\bsticky\b/);
       assert.match(restoredHtml, /href="https:\/\/example\.com\/notice"/);
       assert.match(restoredHtml, /&lt;script&gt;alert\(&#39;xss&#39;\)&lt;\/script&gt;/);
       assert.doesNotMatch(restoredHtml, /href="https:\/\/example\.com\/notice。/);
