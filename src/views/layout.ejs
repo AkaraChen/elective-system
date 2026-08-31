@@ -82,12 +82,12 @@
   <% } %>
 
   <% if (typeof studentNoticeSegments !== "undefined" && studentNoticeSegments.length > 0) { %>
-    <div id="student-notice" role="status" class="sticky top-4 z-[9998] mx-auto mt-4 w-[min(42rem,calc(100vw-2rem))] rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-blue-900 shadow-lg">
+    <div id="student-notice" role="status" class="fixed left-1/2 top-[4.5rem] z-40 w-[min(42rem,calc(100vw-2rem))] -translate-x-1/2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-blue-900 shadow-lg">
       <div class="flex items-start gap-3">
         <svg class="mt-0.5 h-5 w-5 shrink-0 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <p class="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm"><% studentNoticeSegments.forEach(function(segment) { %><% if (segment.type === 'link') { %><a href="<%= segment.value %>" target="_blank" rel="noopener noreferrer" class="font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"><%= segment.value %></a><% } else { %><%= segment.value %><% } %><% }); %></p>
+        <p class="min-w-0 max-h-[min(50vh,24rem)] flex-1 overflow-y-auto whitespace-pre-wrap break-words text-sm"><% studentNoticeSegments.forEach(function(segment) { %><% if (segment.type === 'link') { %><a href="<%= segment.value %>" target="_blank" rel="noopener noreferrer" class="font-medium text-blue-700 underline underline-offset-2 hover:text-blue-900"><%= segment.value %></a><% } else { %><%= segment.value %><% } %><% }); %></p>
         <button type="button" aria-label="关闭通知" onclick="document.getElementById('student-notice').remove()" class="shrink-0 rounded p-1 text-blue-700 opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
           <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
