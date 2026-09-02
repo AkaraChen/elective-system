@@ -7,8 +7,8 @@ import {
   toLocalISOShort,
   nowLocal,
   isValidLocalDateTime,
+  normalizeLocalDateTime,
   normalizeStartOfDay,
-  normalizeEndOfDay,
   future,
 } from "../utils/time";
 import { parseRouteId } from "../utils/parse-id";
@@ -25,7 +25,7 @@ function getDefaultOpenTime(): string {
   return toLocalISOShort(closer);
 }
 
-const ALLOWED_CONFIG_KEYS = ["site_title", "max_selections", "student_notice"];
+const ALLOWED_CONFIG_KEYS = ["site_title", "max_selections", "student_notice", "course_instructions"];
 
 function parseAllowedGradesInput(raw: unknown): { ok: true; value: string | null } | { ok: false; error: string } {
   if (raw == null || String(raw).trim() === "") return { ok: true, value: null };
@@ -44,6 +44,7 @@ router.get("/admin/courses", requireAdmin, (_req: Request, res: Response) => {
   const maxSelectionsRow = db.select({ value: config.value }).from(config).where(eq(config.key, "max_selections")).get();
   const maxSelections = maxSelectionsRow?.value || "1";
   const studentNotice = db.select({ value: config.value }).from(config).where(eq(config.key, "student_notice")).get()?.value || "";
+  const courseInstructions = db.select({ value: config.value }).from(config).where(eq(config.key, "course_instructions")).get()?.value || "";
   const defaultOpenTime = getDefaultOpenTime();
 
   const courseRows = db.all(
@@ -67,6 +68,7 @@ router.get("/admin/courses", requireAdmin, (_req: Request, res: Response) => {
     siteTitle,
     maxSelections,
     studentNotice,
+    courseInstructions,
     defaultOpenTime,
   });
 });
@@ -213,18 +215,20 @@ router.put("/api/admin/selection-window", requireAdmin, (req: Request, res: Resp
   const endTime = String(req.body.endTime || "");
 
   if (!startTime || !endTime) {
-    return res.status(400).send("开始日期和截止日期不能为空");
+    return res.status(400).send("开始时间和截止时间不能为空");
   }
-  if (!isValidLocalDateTime(startTime) || !isValidLocalDateTime(endTime)) {
-    return res.status(400).send("开始日期或截止日期格式不正确");
+  const normalizedStart = normalizeLocalDateTime(startTime);
+  const normalizedEnd = normalizeLocalDateTime(endTime);
+  if (!normalizedStart || !normalizedEnd) {
+    return res.status(400).send("开始时间或截止时间格式不正确");
   }
-  if (startTime.substring(0, 10) > endTime.substring(0, 10)) {
-    return res.status(400).send("开始日期不得晚于截止日期");
+  if (normalizedStart > normalizedEnd) {
+    return res.status(400).send("开始时间不得晚于截止时间");
   }
 
   const values = [
-    { key: "start_time", value: normalizeStartOfDay(startTime) },
-    { key: "end_time", value: normalizeEndOfDay(endTime) },
+    { key: "start_time", value: normalizedStart },
+    { key: "end_time", value: normalizedEnd },
   ];
   db.transaction((tx) => {
     for (const value of values) {
@@ -256,7 +260,7 @@ router.put("/api/admin/config", requireAdmin, (req: Request, res: Response) => {
 
   let stored = value || "";
   if (key === "site_title") stored = stored.trim();
-  if (key === "student_notice") stored = String(stored).trim();
+  if (key === "student_notice" || key === "course_instructions") stored = String(stored).trim();
 
   db.insert(config).values({ key, value: stored })
     .onConflictDoUpdate({ target: config.key, set: { value: stored } })

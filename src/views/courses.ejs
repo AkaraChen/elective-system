@@ -1,3 +1,10 @@
+<% if (courseInstructions) { %>
+  <section id="course-instructions" aria-labelledby="course-instructions-title" class="mb-6 rounded-xl border border-blue-100 bg-blue-50 px-5 py-4 text-blue-950 shadow-sm">
+    <h3 id="course-instructions-title" class="mb-2 text-base font-semibold">说明</h3>
+    <p class="whitespace-pre-wrap break-words text-sm leading-6"><%= courseInstructions %></p>
+  </section>
+<% } %>
+
 <h2 class="text-2xl font-bold text-gray-900 mb-6">课程列表</h2>
 
 <% if (courses.length === 0) { %>
@@ -16,16 +23,39 @@
     var d = Math.floor(diff / 86400000);
     var h = Math.floor((diff % 86400000) / 3600000);
     var m = Math.floor((diff % 3600000) / 60000);
-    if (d > 0) return d + "天" + h + "时" + m + "分";
-    if (h > 0) return h + "时" + m + "分";
-    return m + "分";
+    var s = Math.floor((diff % 60000) / 1000);
+    if (d > 0) return d + "天" + h + "时" + m + "分" + s + "秒";
+    if (h > 0) return h + "时" + m + "分" + s + "秒";
+    if (m > 0) return m + "分" + s + "秒";
+    return s + "秒";
   }
 
-  var openBtns = document.querySelectorAll("button[data-opentime]");
-  var endSpans = document.querySelectorAll(".countdown-end");
-  if (openBtns.length === 0 && endSpans.length === 0) return;
+  function syncSelectionButtons() {
+    var hasSelection = document.querySelector('[data-course-selected="true"]') !== null;
+    document.querySelectorAll("button[data-course-select]").forEach(function(btn) {
+      btn.disabled = hasSelection;
+      btn.classList.toggle("bg-blue-600", !hasSelection);
+      btn.classList.toggle("text-white", !hasSelection);
+      btn.classList.toggle("hover:bg-blue-700", !hasSelection);
+      btn.classList.toggle("bg-gray-100", hasSelection);
+      btn.classList.toggle("text-gray-400", hasSelection);
+      btn.classList.toggle("cursor-not-allowed", hasSelection);
+    });
+  }
 
-  var timer = setInterval(function() {
+  function disableExpiredCard(countdown) {
+    var card = countdown.closest("article");
+    if (!card) return;
+    var button = card.querySelector("button[data-course-select], button[data-course-drop]");
+    if (!button) return;
+    button.disabled = true;
+    button.textContent = "已截止";
+    button.className = "w-full inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-gray-100 text-gray-400 cursor-not-allowed";
+  }
+
+  function updateCountdowns() {
+    var openBtns = document.querySelectorAll("button[data-opentime]");
+    var endSpans = document.querySelectorAll(".countdown-end");
     var now = new Date();
     var anyActive = false;
 
@@ -33,9 +63,6 @@
       var openTime = new Date(btn.getAttribute("data-opentime") + "+08:00");
       var diff = openTime - now;
       if (diff <= 0) {
-        btn.textContent = "抢课";
-        btn.disabled = false;
-        btn.className = btn.className.replace(/bg-gray-100 text-gray-400 cursor-not-allowed/g, "bg-blue-600 text-white");
         location.reload();
         return;
       }
@@ -48,13 +75,25 @@
       var diff = endTime - now;
       if (diff <= 0) {
         el.textContent = "已截止";
+        disableExpiredCard(el);
         return;
       }
       anyActive = true;
       el.textContent = "剩余" + formatCountdown(diff);
     });
 
-    if (!anyActive) clearInterval(timer);
+    return anyActive;
+  }
+
+  syncSelectionButtons();
+  updateCountdowns();
+  document.body.addEventListener("htmx:afterSwap", function() {
+    syncSelectionButtons();
+    updateCountdowns();
+  });
+
+  var timer = setInterval(function() {
+    if (!updateCountdowns()) clearInterval(timer);
   }, 1000);
 })();
 </script>

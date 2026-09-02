@@ -65,6 +65,12 @@ export function isValidLocalDateTime(s: string): boolean {
   return parseLocalDateTime(s) !== null;
 }
 
+export function normalizeLocalDateTime(s: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(s.trim())) return null;
+  const parsed = parseLocalDateTime(s);
+  return parsed ? toLocalISO(parsed) : null;
+}
+
 export function asStartInstant(s: string): string {
   if (!s) return s;
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s + "T00:00:00";
