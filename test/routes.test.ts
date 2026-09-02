@@ -58,6 +58,7 @@ describe("grade and selection routes", () => {
     assert.match(html, /Allowed course/);
     assert.doesNotMatch(html, /Restricted course/);
     assert.match(html, /Student Nickname/);
+    assert.match(html, /id="course-selection-state" data-max-selections="3"/);
   });
 
   it("uses the earliest matching priority batch", async () => {

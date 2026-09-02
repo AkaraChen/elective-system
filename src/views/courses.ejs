@@ -1,3 +1,4 @@
+<div id="course-selection-state" data-max-selections="<%= maxSelections %>">
 <% if (courseInstructions) { %>
   <section id="course-instructions" aria-labelledby="course-instructions-title" class="mb-6 rounded-xl border border-blue-100 bg-blue-50 px-5 py-4 text-blue-950 shadow-sm">
     <h3 id="course-instructions-title" class="mb-2 text-base font-semibold">说明</h3>
@@ -16,6 +17,7 @@
     <% }); %>
   </div>
 <% } %>
+</div>
 
 <script>
 (function() {
@@ -31,15 +33,18 @@
   }
 
   function syncSelectionButtons() {
-    var hasSelection = document.querySelector('[data-course-selected="true"]') !== null;
+    var state = document.getElementById("course-selection-state");
+    var maxSelections = Number.parseInt(state.getAttribute("data-max-selections"), 10);
+    var selectedCount = document.querySelectorAll('[data-course-selected="true"]').length;
+    var hasReachedLimit = selectedCount >= maxSelections;
     document.querySelectorAll("button[data-course-select]").forEach(function(btn) {
-      btn.disabled = hasSelection;
-      btn.classList.toggle("bg-blue-600", !hasSelection);
-      btn.classList.toggle("text-white", !hasSelection);
-      btn.classList.toggle("hover:bg-blue-700", !hasSelection);
-      btn.classList.toggle("bg-gray-100", hasSelection);
-      btn.classList.toggle("text-gray-400", hasSelection);
-      btn.classList.toggle("cursor-not-allowed", hasSelection);
+      btn.disabled = hasReachedLimit;
+      btn.classList.toggle("bg-blue-600", !hasReachedLimit);
+      btn.classList.toggle("text-white", !hasReachedLimit);
+      btn.classList.toggle("hover:bg-blue-700", !hasReachedLimit);
+      btn.classList.toggle("bg-gray-100", hasReachedLimit);
+      btn.classList.toggle("text-gray-400", hasReachedLimit);
+      btn.classList.toggle("cursor-not-allowed", hasReachedLimit);
     });
   }
 

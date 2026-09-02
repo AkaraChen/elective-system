@@ -21,6 +21,7 @@ router.get("/courses", requireAuth, (req: Request, res: Response) => {
   const grade = studentGrade(user?.grade);
   const startTime = readStartTime(db);
   const endTime = readEndTime(db);
+  const maxSelections = readMaxSelections(db);
   const courseInstructions = readConfig(db, "course_instructions")?.trim() || "";
 
   const allCourses = db.select().from(courses).all();
@@ -49,7 +50,7 @@ router.get("/courses", requireAuth, (req: Request, res: Response) => {
       return { ...c, opentime, state, endtime: endTime };
     });
 
-  res.render("courses", { courses: courseList, now, endTime, courseInstructions });
+  res.render("courses", { courses: courseList, now, endTime, maxSelections, courseInstructions });
 });
 
 function isInternalError(msg: string): boolean {
