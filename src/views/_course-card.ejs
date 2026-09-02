@@ -1,4 +1,4 @@
-<article id="card-<%= c.id %>" class="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow p-6 min-w-0 break-words">
+<article id="card-<%= c.id %>" data-course-selected="<%= c.state === 'selected' ? 'true' : 'false' %>" class="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow p-6 min-w-0 break-words">
   <div class="flex items-start justify-between gap-3 mb-3">
     <h3 class="text-lg font-semibold text-gray-900"><%= c.name %></h3>
     <% if (c.state === "selected") { %>
@@ -59,6 +59,7 @@
   <div class="mt-auto">
     <% if (c.state === "selected") { %>
       <button id="drop-btn-<%= c.id %>"
+              data-course-drop
               class="relative w-full text-sm font-medium rounded-lg px-4 py-2 bg-red-500 text-white hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
               hx-post="/api/courses/<%= c.id %>/drop"
               hx-target="#card-<%= c.id %>"
@@ -84,6 +85,7 @@
       </button>
     <% } else { %>
       <button id="btn-<%= c.id %>"
+              data-course-select
               class="relative w-full text-sm font-medium rounded-lg px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
               hx-post="/api/courses/<%= c.id %>/select"
               hx-target="#card-<%= c.id %>"

@@ -6,6 +6,7 @@ import {
   defaultEndTime,
   defaultStartTime,
   isValidLocalDateTime,
+  normalizeLocalDateTime,
   laterInstant,
   nowLocal,
   parseLocalDateTime,
@@ -45,5 +46,11 @@ describe("local time helpers", () => {
     assert.equal(isValidLocalDateTime("2026-09-05T08:30"), true);
     assert.equal(isValidLocalDateTime("not-a-date"), false);
     assert.equal(isValidLocalDateTime("2026-13-01"), false);
+  });
+
+  it("canonicalizes explicit China-local times to seconds without inventing a day boundary", () => {
+    assert.equal(normalizeLocalDateTime("2026-09-05T08:30"), "2026-09-05T08:30:00");
+    assert.equal(normalizeLocalDateTime("2026-09-05T08:30:17"), "2026-09-05T08:30:17");
+    assert.equal(normalizeLocalDateTime("2026-09-05"), null);
   });
 });

@@ -7,7 +7,7 @@ import { asEndInstant, nowLocal } from "../utils/time";
 import { parseRouteId } from "../utils/parse-id";
 import { isGradeAllowed, studentGrade } from "../utils/grade";
 import { effectiveOpenTime, resolveCourseState } from "../utils/course-state";
-import { readEndTime, readStartTime } from "../utils/app-config";
+import { readConfig, readEndTime, readStartTime } from "../utils/app-config";
 import { readMaxSelections, readOpenTimeForUser } from "../services/selection-policy";
 
 const router = Router();
@@ -21,6 +21,7 @@ router.get("/courses", requireAuth, (req: Request, res: Response) => {
   const grade = studentGrade(user?.grade);
   const startTime = readStartTime(db);
   const endTime = readEndTime(db);
+  const courseInstructions = readConfig(db, "course_instructions")?.trim() || "";
 
   const allCourses = db.select().from(courses).all();
 
@@ -48,7 +49,7 @@ router.get("/courses", requireAuth, (req: Request, res: Response) => {
       return { ...c, opentime, state, endtime: endTime };
     });
 
-  res.render("courses", { courses: courseList, now, endTime });
+  res.render("courses", { courses: courseList, now, endTime, courseInstructions });
 });
 
 function isInternalError(msg: string): boolean {

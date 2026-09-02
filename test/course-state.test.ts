@@ -38,13 +38,24 @@ describe("selection window", () => {
     );
   });
 
-  it("closes at local end of the end_time day", () => {
+  it("closes at the exact configured end second", () => {
     assert.equal(
       resolveCourseState({
-        now: "2026-09-30T23:59:59",
+        now: "2026-09-30T12:34:55",
         openTime: "2026-08-01T00:00:00",
         startTime: "2026-09-05T00:00:00",
-        endTime: "2026-09-30",
+        endTime: "2026-09-30T12:34:56",
+        selected: false,
+        availableSeats: 10,
+      }),
+      "open",
+    );
+    assert.equal(
+      resolveCourseState({
+        now: "2026-09-30T12:34:56",
+        openTime: "2026-08-01T00:00:00",
+        startTime: "2026-09-05T00:00:00",
+        endTime: "2026-09-30T12:34:56",
         selected: false,
         availableSeats: 10,
       }),

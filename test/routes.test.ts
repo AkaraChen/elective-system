@@ -85,22 +85,26 @@ describe("grade and selection routes", () => {
     assert.equal(rawDb!.prepare("SELECT count(*) FROM selections WHERE user_id = 2 AND course_id = 2").pluck().get(), 0);
   });
 
-  it("renders one all-year selection window form without a minimum month", async () => {
+  it("renders second-precision selection window inputs without a minimum date", async () => {
     const admin = await login("admin", "123");
     const response = await fetch(`${baseUrl}/admin/courses`, {
       headers: { cookie: admin.cookie },
     });
     const html = await response.text();
-    const deadlineInput = html.match(/<input type="date" name="endTime"[\s\S]*?\/>/)?.[0] || "";
+    const startInput = html.match(/<input type="datetime-local" name="startTime"[\s\S]*?\/>/)?.[0] || "";
+    const deadlineInput = html.match(/<input type="datetime-local" name="endTime"[\s\S]*?\/>/)?.[0] || "";
 
     assert.equal(response.status, 200);
     assert.match(html, /action="\/api\/admin\/selection-window\?_method=PUT"/);
-    assert.match(html, /name="startTime"/);
+    assert.match(startInput, /step="1"/);
+    assert.match(startInput, /value="2000-01-01T00:00:00"/);
     assert.match(deadlineInput, /name="endTime"/);
+    assert.match(deadlineInput, /step="1"/);
+    assert.match(deadlineInput, /value="2999-12-31T23:59:59"/);
     assert.doesNotMatch(deadlineInput, /\smin=/);
   });
 
-  it("allows an August same-day selection window", async () => {
+  it("stores an exact same-second selection window", async () => {
     const admin = await login("admin", "123");
     const response = await fetch(`${baseUrl}/api/admin/selection-window`, {
       method: "PUT",
@@ -111,17 +115,36 @@ describe("grade and selection routes", () => {
       },
       body: new URLSearchParams({
         _csrf: admin.csrf,
-        startTime: "2026-08-31",
-        endTime: "2026-08-31",
+        startTime: "2026-08-31T12:34:56",
+        endTime: "2026-08-31T12:34:56",
       }),
     });
 
     assert.equal(response.status, 302);
-    assert.equal(rawDb!.prepare("SELECT value FROM config WHERE key = 'start_time'").pluck().get(), "2026-08-31T00:00:00");
-    assert.equal(rawDb!.prepare("SELECT value FROM config WHERE key = 'end_time'").pluck().get(), "2026-08-31T23:59:59");
+    assert.equal(rawDb!.prepare("SELECT value FROM config WHERE key = 'start_time'").pluck().get(), "2026-08-31T12:34:56");
+    assert.equal(rawDb!.prepare("SELECT value FROM config WHERE key = 'end_time'").pluck().get(), "2026-08-31T12:34:56");
   });
 
-  it("rejects a global start date after the deadline", async () => {
+  it("rejects a global start time after the deadline on the same day", async () => {
+    const admin = await login("admin", "123");
+    const response = await fetch(`${baseUrl}/api/admin/selection-window`, {
+      method: "PUT",
+      headers: {
+        cookie: admin.cookie,
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        _csrf: admin.csrf,
+        startTime: "2026-09-01T08:00:01",
+        endTime: "2026-09-01T08:00:00",
+      }),
+    });
+
+    assert.equal(response.status, 400);
+    assert.match(await response.text(), /开始时间不得晚于截止时间/);
+  });
+
+  it("rejects date-only values instead of silently adding day boundaries", async () => {
     const admin = await login("admin", "123");
     const response = await fetch(`${baseUrl}/api/admin/selection-window`, {
       method: "PUT",
@@ -132,12 +155,12 @@ describe("grade and selection routes", () => {
       body: new URLSearchParams({
         _csrf: admin.csrf,
         startTime: "2026-09-01",
-        endTime: "2026-08-31",
+        endTime: "2026-09-01",
       }),
     });
 
     assert.equal(response.status, 400);
-    assert.match(await response.text(), /开始日期不得晚于截止日期/);
+    assert.match(await response.text(), /时间格式不正确/);
   });
 
   it("removes selections that become ineligible after a student grade change", async () => {
@@ -512,6 +535,43 @@ describe("grade and selection routes", () => {
       assert.equal(rawDb!.prepare("SELECT value FROM config WHERE key = 'student_notice'").pluck().get(), "");
     } finally {
       rawDb!.prepare("DELETE FROM config WHERE key = 'student_notice'").run();
+    }
+  });
+
+  it("lets administrators configure plain course instructions for the student course page", async () => {
+    const admin = await login("admin", "123");
+    const adminPage = await fetch(`${baseUrl}/admin/courses`, { headers: { cookie: admin.cookie } });
+    const adminHtml = await adminPage.text();
+    assert.match(adminHtml, /name="key" value="course_instructions"/);
+    assert.match(adminHtml, /保存课程说明/);
+
+    try {
+      const saved = await fetch(`${baseUrl}/api/admin/config`, {
+        method: "PUT",
+        redirect: "manual",
+        headers: {
+          cookie: admin.cookie,
+          "content-type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          _csrf: admin.csrf,
+          key: "course_instructions",
+          value: "  第一行\n<script>第二行</script>  ",
+        }),
+      });
+      assert.equal(saved.status, 302);
+      assert.equal(rawDb!.prepare("SELECT value FROM config WHERE key = 'course_instructions'").pluck().get(), "第一行\n<script>第二行</script>");
+
+      const student = await login("student", "123");
+      const courses = await fetch(`${baseUrl}/courses`, { headers: { cookie: student.cookie } });
+      const coursesHtml = await courses.text();
+      const instructionsIndex = coursesHtml.indexOf('id="course-instructions"');
+      const headingIndex = coursesHtml.indexOf(">课程列表</h2>", instructionsIndex);
+      assert.ok(instructionsIndex >= 0 && instructionsIndex < headingIndex);
+      assert.match(coursesHtml, /第一行\s*&lt;script&gt;第二行&lt;\/script&gt;/);
+      assert.doesNotMatch(coursesHtml, /<script>第二行<\/script>/);
+    } finally {
+      rawDb!.prepare("DELETE FROM config WHERE key = 'course_instructions'").run();
     }
   });
 });
