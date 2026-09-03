@@ -61,13 +61,50 @@ describe("grade and selection routes", () => {
     assert.match(html, /id="course-selection-state" data-max-selections="3"/);
   });
 
-  it("uses the earliest matching priority batch", async () => {
-    const student = await login("student", "123");
-    const response = await fetch(`${baseUrl}/courses`, { headers: { cookie: student.cookie } });
-    const html = await response.text();
+  it("lets a priority batch open earlier than the global start", async () => {
+    rawDb!.prepare("UPDATE config SET value = ? WHERE key = 'start_time'").run("2095-01-01T00:00:00");
+    try {
+      const student = await login("student", "123");
+      const response = await fetch(`${baseUrl}/courses`, { headers: { cookie: student.cookie } });
+      const html = await response.text();
 
-    assert.match(html, /data-opentime="2090-01-01T00:00:00"/);
-    assert.doesNotMatch(html, /data-opentime="2099-01-01T00:00:00"/);
+      assert.match(html, /data-opentime="2090-01-01T00:00:00"/);
+      assert.doesNotMatch(html, /data-opentime="2099-01-01T00:00:00"/);
+    } finally {
+      rawDb!.prepare("UPDATE config SET value = ? WHERE key = 'start_time'").run("2000-01-01T00:00:00");
+    }
+  });
+
+  it("never opens later than the global start, even with a later batch", async () => {
+    rawDb!.prepare("UPDATE config SET value = ? WHERE key = 'start_time'").run("2085-01-01T00:00:00");
+    try {
+      const student = await login("student", "123");
+      const html = await (await fetch(`${baseUrl}/courses`, { headers: { cookie: student.cookie } })).text();
+
+      assert.match(html, /data-opentime="2085-01-01T00:00:00"/);
+    } finally {
+      rawDb!.prepare("UPDATE config SET value = ? WHERE key = 'start_time'").run("2000-01-01T00:00:00");
+    }
+  });
+
+  it("rejects selecting before the effective open time", async () => {
+    rawDb!.prepare("UPDATE config SET value = ? WHERE key = 'start_time'").run("2095-01-01T00:00:00");
+    try {
+      const student = await login("student", "123");
+      const response = await fetch(`${baseUrl}/api/courses/1/select`, {
+        method: "POST",
+        headers: {
+          cookie: student.cookie,
+          "content-type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({ _csrf: student.csrf }),
+      });
+
+      assert.equal(response.status, 400);
+      assert.match(await response.text(), /尚未到开放时间/);
+    } finally {
+      rawDb!.prepare("UPDATE config SET value = ? WHERE key = 'start_time'").run("2000-01-01T00:00:00");
+    }
   });
 
   it("rejects an administrator assigning an ineligible student", async () => {
@@ -640,7 +677,6 @@ function createSchema() {
       location TEXT,
       total_seats INTEGER NOT NULL,
       available_seats INTEGER NOT NULL,
-      open_time TEXT NOT NULL,
       allowed_grades TEXT,
       tag TEXT
     );
@@ -672,10 +708,10 @@ function seedFixture(sqlite: Database.Database) {
     .run("admin", "Admin Nickname", password, 1, null, null);
   sqlite.prepare("INSERT INTO users (username, nickname, password, is_admin, grade, phone) VALUES (?, ?, ?, ?, ?, ?)")
     .run("student", "Student Nickname", password, 0, 2026, "13800138000");
-  sqlite.prepare("INSERT INTO courses (name, teacher, total_seats, available_seats, open_time, allowed_grades) VALUES (?, ?, ?, ?, ?, ?)")
-    .run("Allowed course", "Teacher", 10, 10, "2999-01-01T00:00:00", "2026");
-  sqlite.prepare("INSERT INTO courses (name, teacher, total_seats, available_seats, open_time, allowed_grades) VALUES (?, ?, ?, ?, ?, ?)")
-    .run("Restricted course", "Teacher", 10, 10, "2000-01-01T00:00:00", "2025");
+  sqlite.prepare("INSERT INTO courses (name, teacher, total_seats, available_seats, allowed_grades) VALUES (?, ?, ?, ?, ?)")
+    .run("Allowed course", "Teacher", 10, 10, "2026");
+  sqlite.prepare("INSERT INTO courses (name, teacher, total_seats, available_seats, allowed_grades) VALUES (?, ?, ?, ?, ?)")
+    .run("Restricted course", "Teacher", 10, 10, "2025");
   const later = sqlite.prepare("INSERT INTO access (course_id, open_time) VALUES (?, ?)").run(1, "2099-01-01T00:00:00").lastInsertRowid;
   const earlier = sqlite.prepare("INSERT INTO access (course_id, open_time) VALUES (?, ?)").run(1, "2090-01-01T00:00:00").lastInsertRowid;
   sqlite.prepare("INSERT INTO access_users (access_id, user_id) VALUES (?, ?)").run(later, 2);

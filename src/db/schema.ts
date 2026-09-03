@@ -20,7 +20,6 @@ export const courses = sqliteTable("courses", {
   location: text("location"),
   totalSeats: integer("total_seats").notNull(),
   availableSeats: integer("available_seats").notNull(),
-  openTime: text("open_time").notNull(),
   allowedGrades: text("allowed_grades"),
   tag: text("tag"),
 });

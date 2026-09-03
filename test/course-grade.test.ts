@@ -28,7 +28,6 @@ function createFixture() {
       location TEXT,
       total_seats INTEGER NOT NULL,
       available_seats INTEGER NOT NULL,
-      open_time TEXT NOT NULL,
       allowed_grades TEXT,
       tag TEXT
     );
@@ -52,7 +51,6 @@ function createFixture() {
     teacher: "Teacher",
     totalSeats: 3,
     availableSeats: 0,
-    openTime: "2026-09-05T00:00:00",
   }).run();
   db.insert(selections).values([
     { userId: 1, courseId: 1, createdAt: "2026-09-05T00:00:00" },

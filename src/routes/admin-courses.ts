@@ -4,12 +4,7 @@ import { db } from "../db/index";
 import { courses, access, accessUsers, selections, config } from "../db/schema";
 import { requireAdmin } from "../middleware/auth";
 import {
-  toLocalISOShort,
-  nowLocal,
-  isValidLocalDateTime,
   normalizeLocalDateTime,
-  normalizeStartOfDay,
-  future,
 } from "../utils/time";
 import { parseRouteId } from "../utils/parse-id";
 import { parseAllowedGrades, serializeAllowedGrades } from "../utils/grade";
@@ -17,13 +12,6 @@ import { readEndTime, readStartTime } from "../utils/app-config";
 import { removeIneligibleSelections } from "../services/course-grade";
 
 const router = Router();
-
-function getDefaultOpenTime(): string {
-  const now = new Date();
-  const { mar1, sep1 } = future(now);
-  const closer = mar1.getTime() - now.getTime() < sep1.getTime() - now.getTime() ? mar1 : sep1;
-  return toLocalISOShort(closer);
-}
 
 const ALLOWED_CONFIG_KEYS = ["site_title", "max_selections", "student_notice", "course_instructions"];
 
@@ -45,13 +33,11 @@ router.get("/admin/courses", requireAdmin, (_req: Request, res: Response) => {
   const maxSelections = maxSelectionsRow?.value || "1";
   const studentNotice = db.select({ value: config.value }).from(config).where(eq(config.key, "student_notice")).get()?.value || "";
   const courseInstructions = db.select({ value: config.value }).from(config).where(eq(config.key, "course_instructions")).get()?.value || "";
-  const defaultOpenTime = getDefaultOpenTime();
 
   const courseRows = db.all(
     sql`SELECT c.id, c.name, c.teacher, c.description,
         c.course_time as courseTime, c.location,
         c.total_seats as totalSeats, c.available_seats as availableSeats,
-        c.open_time as openTime,
         c.allowed_grades as allowedGrades,
         c.tag as tag,
         COALESCE(sc.cnt, 0) as selected_count
@@ -70,19 +56,17 @@ router.get("/admin/courses", requireAdmin, (_req: Request, res: Response) => {
     maxSelections,
     studentNotice,
     courseInstructions,
-    defaultOpenTime,
   });
 });
 
 router.post("/api/admin/courses", requireAdmin, (req: Request, res: Response) => {
-  const { name, teacher, description, courseTime, location, openTime, tag } = req.body;
+  const { name, teacher, description, courseTime, location, tag } = req.body;
   const totalSeats = Number(req.body.totalSeats);
 
   const errors: string[] = [];
   if (!name || !name.trim()) errors.push("课程名称不能为空");
   if (!teacher || !teacher.trim()) errors.push("授课教师不能为空");
   if (!Number.isInteger(totalSeats) || totalSeats < 1) errors.push("总名额必须为大于0的整数");
-  if (!openTime || !isValidLocalDateTime(openTime)) errors.push("开放时间格式不正确");
   let allowedGrades: string | null = null;
   const allowed = parseAllowedGradesInput(req.body.allowedGrades);
   if (!allowed.ok) errors.push(allowed.error);
@@ -100,7 +84,6 @@ router.post("/api/admin/courses", requireAdmin, (req: Request, res: Response) =>
     location: location || null,
     totalSeats,
     availableSeats: totalSeats,
-    openTime: normalizeStartOfDay(openTime) || nowLocal(),
     allowedGrades,
     tag: tag && String(tag).trim() ? String(tag).trim() : null,
   }).run();
@@ -111,7 +94,7 @@ router.post("/api/admin/courses", requireAdmin, (req: Request, res: Response) =>
 router.put("/api/admin/courses/:id", requireAdmin, (req: Request, res: Response) => {
   const courseId = parseRouteId(req.params.id);
   if (courseId === null) return res.status(400).send("无效的课程ID");
-  const { name, teacher, description, courseTime, location, totalSeats, openTime, resetSeats, allowedGrades, tag } = req.body;
+  const { name, teacher, description, courseTime, location, totalSeats, resetSeats, allowedGrades, tag } = req.body;
 
   const existing = db.select().from(courses).where(eq(courses.id, courseId)).get();
   if (!existing) return res.status(404).send("课程不存在");
@@ -130,12 +113,6 @@ router.put("/api/admin/courses/:id", requireAdmin, (req: Request, res: Response)
   if (courseTime !== undefined) updateData.courseTime = courseTime || null;
   if (location !== undefined) updateData.location = location || null;
   if (tag !== undefined) updateData.tag = String(tag).trim() || null;
-  if (openTime !== undefined) {
-    if (openTime && !isValidLocalDateTime(openTime)) {
-      return res.status(400).send("开放时间格式不正确");
-    }
-    updateData.openTime = openTime ? normalizeStartOfDay(openTime) : openTime;
-  }
   if (allowedGrades !== undefined) {
     const allowed = parseAllowedGradesInput(allowedGrades);
     if (!allowed.ok) return res.status(400).send(allowed.error);

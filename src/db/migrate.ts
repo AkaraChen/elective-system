@@ -47,6 +47,9 @@ export function migrate(sqlite: Database.Database): void {
     if (!hasColumn(sqlite, "courses", "tag")) {
       sqlite.exec("ALTER TABLE courses ADD COLUMN tag TEXT");
     }
+    if (hasColumn(sqlite, "courses", "open_time")) {
+      sqlite.exec("ALTER TABLE courses DROP COLUMN open_time");
+    }
   }
 
   if (tableExists(sqlite, "config")) {

@@ -107,7 +107,6 @@
       <%- include('_components/form-field', { label: '上课时间', name: 'courseTime' }) %>
       <%- include('_components/form-field', { label: '上课地点', name: 'location' }) %>
       <%- include('_components/form-field', { label: '总名额', name: 'totalSeats', type: 'number', value: '30', required: true }) %>
-      <%- include('_components/form-field', { label: '默认开放时间', name: 'openTime', type: 'date', value: typeof defaultOpenTime === 'string' ? defaultOpenTime.substring(0, 10) : '', required: true }) %>
       <%- include('_components/form-field', { label: '允许年级', name: 'allowedGrades', placeholder: '例如 2024,2026；留空表示不限' }) %>
       <%- include('_components/form-field', { label: '标签', name: 'tag', placeholder: '例如 热门；留空表示不显示' }) %>
     </div>
@@ -150,10 +149,6 @@
             </div>
           <% } %>
           <div class="flex justify-between">
-            <span class="text-xs text-gray-400">开放时间</span>
-            <span class="text-sm text-gray-600"><%= c.openTime ? c.openTime.substring(0, 10) : "-" %></span>
-          </div>
-          <div class="flex justify-between">
             <span class="text-xs text-gray-400">允许年级</span>
             <span class="text-sm text-gray-600"><%= c.allowedGrades ? String(c.allowedGrades).split(',').map(function(g) { return g + '级'; }).join('、') : '不限' %></span>
           </div>
@@ -188,7 +183,6 @@
               <%- include('_components/form-field', { label: '上课时间', name: 'courseTime', value: c.courseTime || '' }) %>
               <%- include('_components/form-field', { label: '上课地点', name: 'location', value: c.location || '' }) %>
               <%- include('_components/form-field', { label: '总名额', name: 'totalSeats', type: 'number', value: String(c.totalSeats), required: true }) %>
-              <%- include('_components/form-field', { label: '默认开放时间', name: 'openTime', type: 'date', value: c.openTime ? c.openTime.substring(0, 10) : '' }) %>
               <%- include('_components/form-field', { label: '允许年级', name: 'allowedGrades', value: c.allowedGrades || '', placeholder: '例如 2024,2026；留空表示不限' }) %>
               <%- include('_components/form-field', { label: '标签', name: 'tag', value: c.tag || '', placeholder: '例如 热门；留空表示不显示' }) %>
             </div>

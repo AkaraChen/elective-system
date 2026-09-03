@@ -8,7 +8,7 @@ import { parseRouteId } from "../utils/parse-id";
 import { isGradeAllowed, studentGrade } from "../utils/grade";
 import { effectiveOpenTime, resolveCourseState } from "../utils/course-state";
 import { readConfig, readEndTime, readStartTime } from "../utils/app-config";
-import { readMaxSelections, readOpenTimeForUser } from "../services/selection-policy";
+import { readMaxSelections, readBatchOpenTimeForUser } from "../services/selection-policy";
 
 const router = Router();
 
@@ -36,12 +36,12 @@ router.get("/courses", requireAuth, (req: Request, res: Response) => {
   const courseList = allCourses
     .filter((c) => isGradeAllowed(grade, c.allowedGrades))
     .map((c) => {
-      const courseOpen = readOpenTimeForUser(db, userId, c.id);
-      const opentime = effectiveOpenTime(courseOpen, startTime);
+      const batchOpen = readBatchOpenTimeForUser(db, userId, c.id);
+      const opentime = effectiveOpenTime(batchOpen, startTime);
       const isSelected = selectedIds.has(c.id);
       const state = resolveCourseState({
         now,
-        openTime: courseOpen,
+        batchOpenTime: batchOpen,
         startTime,
         endTime,
         selected: isSelected,
@@ -87,10 +87,10 @@ router.post("/api/courses/:id/select", requireAuth, (req: Request, res: Response
         throw new Error("当前年级不可选择该课程");
       }
 
-      const opentime = readOpenTimeForUser(tx, userId, courseId);
+      const batchOpen = readBatchOpenTimeForUser(tx, userId, courseId);
       const startTime = readStartTime(tx);
       const endTime = readEndTime(tx);
-      const effectiveOpen = effectiveOpenTime(opentime, startTime);
+      const effectiveOpen = effectiveOpenTime(batchOpen, startTime);
 
       if (now < effectiveOpen) throw new Error("尚未到开放时间");
       if (now >= asEndInstant(endTime)) throw new Error("选课已截止");
@@ -114,13 +114,13 @@ router.post("/api/courses/:id/select", requireAuth, (req: Request, res: Response
     });
 
     const course = db.select().from(courses).where(eq(courses.id, courseId)).get()!;
-    const courseOpen = readOpenTimeForUser(db, userId, courseId);
+    const batchOpen = readBatchOpenTimeForUser(db, userId, courseId);
     const startTime = readStartTime(db);
     const endTimeStr = readEndTime(db);
 
     const c = {
       ...course,
-      opentime: effectiveOpenTime(courseOpen, startTime),
+      opentime: effectiveOpenTime(batchOpen, startTime),
       state: "selected",
       endtime: endTimeStr,
     };
@@ -164,13 +164,13 @@ router.post("/api/courses/:id/drop", requireAuth, (req: Request, res: Response) 
     });
 
     const course = db.select().from(courses).where(eq(courses.id, courseId)).get()!;
-    const courseOpen = readOpenTimeForUser(db, userId, courseId);
+    const batchOpen = readBatchOpenTimeForUser(db, userId, courseId);
     const startTime = readStartTime(db);
     const endTime = readEndTime(db);
-    const opentime = effectiveOpenTime(courseOpen, startTime);
+    const opentime = effectiveOpenTime(batchOpen, startTime);
     const state = resolveCourseState({
       now,
-      openTime: courseOpen,
+      batchOpenTime: batchOpen,
       startTime,
       endTime,
       selected: false,
