@@ -15,7 +15,7 @@
     "db:init": "npm run db:migrate && npm run db:seed",
     "db:migrate-from-sqlite": "tsx src/db/migrate-from-sqlite.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test test/*.test.ts"
+    "test": "tsx --test --test-concurrency=1 test/*.test.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4",

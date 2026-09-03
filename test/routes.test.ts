@@ -12,6 +12,8 @@ import { seed } from "../src/db/seed";
 import { closeQueue } from "../src/lib/queue";
 import { selectionWorker } from "../src/workers/selection";
 
+process.env.NODE_ENV = "test";
+
 const originalDirectory = process.cwd();
 const databaseUrl = process.env.DATABASE_URL || "postgres://postgres:postgres@localhost:5432/elective_test";
 const redisUrl = process.env.REDIS_URL || "redis://localhost:6379/1";
