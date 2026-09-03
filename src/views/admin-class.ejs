@@ -123,6 +123,16 @@
     }).then(function(res) {
       if (res.ok) {
         res.text().then(function(html) {
+          var tmp = document.createElement('div');
+          tmp.innerHTML = html;
+          var newBlock = tmp.firstElementChild;
+          if (newBlock && newBlock.id) {
+            var oldBlock = document.getElementById(newBlock.id);
+            if (oldBlock) {
+              oldBlock.replaceWith(newBlock);
+              return;
+            }
+          }
           var resultArea = document.getElementById('class-search-result');
           if (resultArea) resultArea.innerHTML = html;
         });
