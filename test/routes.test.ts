@@ -123,6 +123,33 @@ describe("grade and selection routes", () => {
     assert.equal(rawDb!.prepare("SELECT count(*) FROM selections WHERE user_id = 2 AND course_id = 2").pluck().get(), 0);
   });
 
+  it("returns every course sharing the searched name in the class search", async () => {
+    rawDb!.prepare("INSERT INTO courses (name, teacher, total_seats, available_seats, allowed_grades) VALUES (?, ?, ?, ?, ?)")
+      .run("Allowed course", "Other Teacher", 5, 5, "2026");
+
+    const admin = await login("admin", "123");
+    const response = await fetch(
+      `${baseUrl}/api/admin/class/courses/search?name=${encodeURIComponent("Allowed course")}`,
+      { headers: { cookie: admin.cookie } },
+    );
+    const html = await response.text();
+
+    assert.equal(response.status, 200);
+    assert.match(html, /id="class-result-1"/);
+    assert.match(html, /id="class-result-3"/);
+    assert.match(html, /Other Teacher/);
+  });
+
+  it("reports when no course matches the class search", async () => {
+    const admin = await login("admin", "123");
+    const response = await fetch(
+      `${baseUrl}/api/admin/class/courses/search?name=${encodeURIComponent("不存在的课")}`,
+      { headers: { cookie: admin.cookie } },
+    );
+
+    assert.match(await response.text(), /未找到课程/);
+  });
+
   it("renders second-precision selection window inputs without a minimum date", async () => {
     const admin = await login("admin", "123");
     const response = await fetch(`${baseUrl}/admin/courses`, {

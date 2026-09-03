@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { eq, and, inArray, ne } from "drizzle-orm";
+import { eq, and, asc, inArray, ne } from "drizzle-orm";
 import { db } from "../db/index";
 import { courses, users, selections } from "../db/schema";
 import { requireAdmin } from "../middleware/auth";
@@ -34,26 +34,32 @@ router.get("/api/admin/class/courses/search", requireAdmin, (req: Request, res: 
     return res.send(`<div class="px-6 py-4 text-sm text-gray-500">请输入课程名</div>`);
   }
 
-  const course = db
+  const matched = db
     .select()
     .from(courses)
     .where(eq(courses.name, name.trim()))
-    .get();
+    .orderBy(asc(courses.id))
+    .all();
 
-  if (!course) {
+  if (matched.length === 0) {
     return res.send(
       `<div class="px-6 py-4 text-sm text-red-500">未找到课程 "${escapeHtml(name.trim())}"</div>`
     );
   }
 
-  const enrolledStudents = db
-    .select({ id: users.id, username: users.username, nickname: users.nickname, grade: users.grade, className: users.className, phone: users.phone })
-    .from(selections)
-    .innerJoin(users, eq(selections.userId, users.id))
-    .where(eq(selections.courseId, course.id))
-    .all();
+  const html = matched
+    .map((course) => {
+      const enrolledStudents = db
+        .select({ id: users.id, username: users.username, nickname: users.nickname, grade: users.grade, className: users.className, phone: users.phone })
+        .from(selections)
+        .innerJoin(users, eq(selections.userId, users.id))
+        .where(eq(selections.courseId, course.id))
+        .all();
+      return renderResult(course, enrolledStudents, res.locals.csrfToken);
+    })
+    .join("");
 
-  res.send(renderResult(course, enrolledStudents, res.locals.csrfToken));
+  res.send(html);
 });
 
 router.put(
