@@ -93,6 +93,14 @@ export function laterInstant(a: string, b: string): string {
   return aa >= bb ? aa : bb;
 }
 
+export function earlierInstant(a: string, b: string): string {
+  if (!a) return asStartInstant(b);
+  if (!b) return asStartInstant(a);
+  const aa = asStartInstant(a);
+  const bb = asStartInstant(b);
+  return aa <= bb ? aa : bb;
+}
+
 export function future(now: Date = new Date()): { mar1: Date; sep1: Date } {
   const year = Number(chinaParts(now).year);
   const mar1This = new Date(`${year}-03-01T00:00:00+08:00`);

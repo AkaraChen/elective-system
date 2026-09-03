@@ -49,6 +49,7 @@ describe("KIT-910 sqlite migration", () => {
     assert.ok(courseCols.some((c) => c.name === "allowed_grades"));
     assert.ok(!courseCols.some((c) => c.name === "allowed_grade"));
     assert.ok(courseCols.some((c) => c.name === "tag"));
+    assert.ok(!courseCols.some((c) => c.name === "open_time"));
     assert.ok(userCols.some((c) => c.name === "nickname"));
     assert.ok(userCols.some((c) => c.name === "grade"));
     assert.ok(userCols.some((c) => c.name === "class_name"));

@@ -39,7 +39,6 @@ export function seed(d: ReturnType<typeof drizzle>) {
       location: "教学楼A-301",
       totalSeats: 60,
       availableSeats: 60,
-      openTime: "2026-08-01T00:00:00",
       allowedGrades: "2024,2025,2026",
       tag: "热门",
     },
@@ -51,7 +50,6 @@ export function seed(d: ReturnType<typeof drizzle>) {
       location: "教学楼B-205",
       totalSeats: 40,
       availableSeats: 40,
-      openTime: "2026-08-30T00:00:00",
       allowedGrades: "2025,2026",
     },
   ]).run();
