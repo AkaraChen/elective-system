@@ -36,11 +36,16 @@ export function migrate(sqlite: Database.Database): void {
     }
   }
 
-  if (tableExists(sqlite, "courses") && !hasColumn(sqlite, "courses", "allowed_grades")) {
-    if (hasColumn(sqlite, "courses", "allowed_grade")) {
-      sqlite.exec("ALTER TABLE courses RENAME COLUMN allowed_grade TO allowed_grades");
-    } else {
-      sqlite.exec("ALTER TABLE courses ADD COLUMN allowed_grades TEXT");
+  if (tableExists(sqlite, "courses")) {
+    if (!hasColumn(sqlite, "courses", "allowed_grades")) {
+      if (hasColumn(sqlite, "courses", "allowed_grade")) {
+        sqlite.exec("ALTER TABLE courses RENAME COLUMN allowed_grade TO allowed_grades");
+      } else {
+        sqlite.exec("ALTER TABLE courses ADD COLUMN allowed_grades TEXT");
+      }
+    }
+    if (!hasColumn(sqlite, "courses", "tag")) {
+      sqlite.exec("ALTER TABLE courses ADD COLUMN tag TEXT");
     }
   }
 

@@ -29,7 +29,8 @@ function createFixture() {
       total_seats INTEGER NOT NULL,
       available_seats INTEGER NOT NULL,
       open_time TEXT NOT NULL,
-      allowed_grades TEXT
+      allowed_grades TEXT,
+      tag TEXT
     );
     CREATE TABLE selections (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

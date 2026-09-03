@@ -41,6 +41,7 @@ export function seed(d: ReturnType<typeof drizzle>) {
       availableSeats: 60,
       openTime: "2026-08-01T00:00:00",
       allowedGrades: "2024,2025,2026",
+      tag: "热门",
     },
     {
       name: "Go语言",

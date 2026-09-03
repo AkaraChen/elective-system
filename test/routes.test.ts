@@ -544,7 +544,7 @@ describe("grade and selection routes", () => {
     const adminPage = await fetch(`${baseUrl}/admin/courses`, { headers: { cookie: admin.cookie } });
     const adminHtml = await adminPage.text();
     assert.match(adminHtml, /name="key" value="course_instructions"/);
-    assert.match(adminHtml, /保存课程说明/);
+    assert.match(adminHtml, /保存课程须知/);
 
     try {
       const saved = await fetch(`${baseUrl}/api/admin/config`, {
@@ -641,7 +641,8 @@ function createSchema() {
       total_seats INTEGER NOT NULL,
       available_seats INTEGER NOT NULL,
       open_time TEXT NOT NULL,
-      allowed_grades TEXT
+      allowed_grades TEXT,
+      tag TEXT
     );
     CREATE TABLE access (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

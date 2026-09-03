@@ -59,19 +59,19 @@
   </div>
 </form>
 
-<h2 class="text-2xl font-bold text-gray-900 mb-6">学生端课程说明</h2>
+<h2 class="text-2xl font-bold text-gray-900 mb-6">学生端课程须知</h2>
 
 <form method="POST" action="/api/admin/config?_method=PUT" class="mb-6">
   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
   <input type="hidden" name="key" value="course_instructions">
   <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
     <textarea name="value" rows="5"
-      placeholder="留空表示不显示说明"
+      placeholder="留空表示不显示须知"
       class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"><%= typeof courseInstructions === 'string' ? courseInstructions : '' %></textarea>
     <div class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-      <p class="text-sm text-gray-500">保存后，说明会显示在学生端课程页面顶部。</p>
+      <p class="text-sm text-gray-500">保存后，须知会显示在学生端课程页面顶部。</p>
       <button type="submit" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors whitespace-nowrap">
-        保存课程说明
+        保存课程须知
       </button>
     </div>
   </div>
@@ -109,6 +109,7 @@
       <%- include('_components/form-field', { label: '总名额', name: 'totalSeats', type: 'number', value: '30', required: true }) %>
       <%- include('_components/form-field', { label: '默认开放时间', name: 'openTime', type: 'date', value: typeof defaultOpenTime === 'string' ? defaultOpenTime.substring(0, 10) : '', required: true }) %>
       <%- include('_components/form-field', { label: '允许年级', name: 'allowedGrades', placeholder: '例如 2024,2026；留空表示不限' }) %>
+      <%- include('_components/form-field', { label: '标签', name: 'tag', placeholder: '例如 热门；留空表示不显示' }) %>
     </div>
     <%- include('_components/form-field', { label: '课程描述', name: 'description', type: 'textarea' }) %>
     <button type="submit" class="inline-flex items-center justify-center text-sm font-medium rounded-lg px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
@@ -157,6 +158,10 @@
             <span class="text-sm text-gray-600"><%= c.allowedGrades ? String(c.allowedGrades).split(',').map(function(g) { return g + '级'; }).join('、') : '不限' %></span>
           </div>
           <div class="flex justify-between">
+            <span class="text-xs text-gray-400">标签</span>
+            <span class="text-sm text-gray-600"><%= c.tag || "-" %></span>
+          </div>
+          <div class="flex justify-between">
             <span class="text-xs text-gray-400">已选/总</span>
             <span class="text-sm font-medium <%= (c.selected_count || 0) >= c.totalSeats ? 'text-red-600' : 'text-green-600' %>"><%= c.selected_count || 0 %> / <%= c.totalSeats %></span>
           </div>
@@ -185,6 +190,7 @@
               <%- include('_components/form-field', { label: '总名额', name: 'totalSeats', type: 'number', value: String(c.totalSeats), required: true }) %>
               <%- include('_components/form-field', { label: '默认开放时间', name: 'openTime', type: 'date', value: c.openTime ? c.openTime.substring(0, 10) : '' }) %>
               <%- include('_components/form-field', { label: '允许年级', name: 'allowedGrades', value: c.allowedGrades || '', placeholder: '例如 2024,2026；留空表示不限' }) %>
+              <%- include('_components/form-field', { label: '标签', name: 'tag', value: c.tag || '', placeholder: '例如 热门；留空表示不显示' }) %>
             </div>
             <%- include('_components/form-field', { label: '课程描述', name: 'description', type: 'textarea', value: c.description || '' }) %>
             <div class="flex items-center justify-between gap-2 pt-1">

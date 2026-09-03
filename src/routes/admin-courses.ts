@@ -53,6 +53,7 @@ router.get("/admin/courses", requireAdmin, (_req: Request, res: Response) => {
         c.total_seats as totalSeats, c.available_seats as availableSeats,
         c.open_time as openTime,
         c.allowed_grades as allowedGrades,
+        c.tag as tag,
         COALESCE(sc.cnt, 0) as selected_count
         FROM courses c
         LEFT JOIN (SELECT course_id, count(*) as cnt FROM selections GROUP BY course_id) sc
@@ -74,7 +75,7 @@ router.get("/admin/courses", requireAdmin, (_req: Request, res: Response) => {
 });
 
 router.post("/api/admin/courses", requireAdmin, (req: Request, res: Response) => {
-  const { name, teacher, description, courseTime, location, openTime } = req.body;
+  const { name, teacher, description, courseTime, location, openTime, tag } = req.body;
   const totalSeats = Number(req.body.totalSeats);
 
   const errors: string[] = [];
@@ -101,6 +102,7 @@ router.post("/api/admin/courses", requireAdmin, (req: Request, res: Response) =>
     availableSeats: totalSeats,
     openTime: normalizeStartOfDay(openTime) || nowLocal(),
     allowedGrades,
+    tag: tag && String(tag).trim() ? String(tag).trim() : null,
   }).run();
 
   res.redirect("/admin/courses");
@@ -109,7 +111,7 @@ router.post("/api/admin/courses", requireAdmin, (req: Request, res: Response) =>
 router.put("/api/admin/courses/:id", requireAdmin, (req: Request, res: Response) => {
   const courseId = parseRouteId(req.params.id);
   if (courseId === null) return res.status(400).send("无效的课程ID");
-  const { name, teacher, description, courseTime, location, totalSeats, openTime, resetSeats, allowedGrades } = req.body;
+  const { name, teacher, description, courseTime, location, totalSeats, openTime, resetSeats, allowedGrades, tag } = req.body;
 
   const existing = db.select().from(courses).where(eq(courses.id, courseId)).get();
   if (!existing) return res.status(404).send("课程不存在");
@@ -127,6 +129,7 @@ router.put("/api/admin/courses/:id", requireAdmin, (req: Request, res: Response)
   if (description !== undefined) updateData.description = description || null;
   if (courseTime !== undefined) updateData.courseTime = courseTime || null;
   if (location !== undefined) updateData.location = location || null;
+  if (tag !== undefined) updateData.tag = String(tag).trim() || null;
   if (openTime !== undefined) {
     if (openTime && !isValidLocalDateTime(openTime)) {
       return res.status(400).send("开放时间格式不正确");
