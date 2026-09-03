@@ -28,6 +28,7 @@
     "express-session": "^1.18",
     "ioredis": "^6.0.0",
     "pg": "^8.23.0",
+    "redis": "^4.7.1",
     "tsx": "^4.19"
   },
   "devDependencies": {

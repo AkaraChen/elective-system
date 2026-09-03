@@ -6,7 +6,7 @@ import session from "express-session";
 import { RedisStore } from "connect-redis";
 import { eq } from "drizzle-orm";
 import { db } from "./db/index";
-import { redis } from "./lib/redis";
+import { sessionRedis } from "./lib/redis";
 import { config, users } from "./db/schema";
 import adminAccessRouter from "./routes/admin-access";
 import adminClassRouter from "./routes/admin-class";
@@ -33,7 +33,7 @@ export function createApp() {
   }
 
   app.use(session({
-    store: new RedisStore({ client: redis }),
+    store: new RedisStore({ client: sessionRedis }),
     secret: process.env.SESSION_SECRET || "elective-system-secret-change-in-production",
     resave: false,
     saveUninitialized: false,
