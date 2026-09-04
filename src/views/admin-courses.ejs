@@ -107,7 +107,6 @@
       <%- include('_components/form-field', { label: '上课时间', name: 'courseTime' }) %>
       <%- include('_components/form-field', { label: '上课地点', name: 'location' }) %>
       <%- include('_components/form-field', { label: '总名额', name: 'totalSeats', type: 'number', value: '30', required: true }) %>
-      <%- include('_components/form-field', { label: '默认开放时间', name: 'openTime', type: 'date', value: typeof defaultOpenTime === 'string' ? defaultOpenTime.substring(0, 10) : '', required: true }) %>
       <%- include('_components/form-field', { label: '允许年级', name: 'allowedGrades', placeholder: '例如 2024,2026；留空表示不限' }) %>
       <%- include('_components/form-field', { label: '标签', name: 'tag', placeholder: '例如 热门；留空表示不显示' }) %>
     </div>
@@ -118,10 +117,16 @@
   </form>
 </details>
 
+<div class="mb-4 bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+  <input type="text" id="course-filter-input" placeholder="搜索课程：支持课程名、教师名、ID"
+    autocomplete="off"
+    class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+</div>
+
 <div>
   <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
     <% courses.forEach(function(c) { %>
-      <div id="course-wrapper-<%= c.id %>" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div id="course-wrapper-<%= c.id %>" data-course-filter="<%= (String(c.name) + '|' + String(c.teacher) + '|' + c.id).toLowerCase() %>" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div id="course-row-<%= c.id %>" class="grid grid-cols-1 gap-y-1.5 px-6 py-3 transition-colors">
           <div class="flex justify-between">
             <span class="text-xs text-gray-400">ID</span>
@@ -149,10 +154,6 @@
               <span class="course-description-preview text-sm text-gray-600 text-right"><%= String(c.description).slice(0, 100) %></span>
             </div>
           <% } %>
-          <div class="flex justify-between">
-            <span class="text-xs text-gray-400">开放时间</span>
-            <span class="text-sm text-gray-600"><%= c.openTime ? c.openTime.substring(0, 10) : "-" %></span>
-          </div>
           <div class="flex justify-between">
             <span class="text-xs text-gray-400">允许年级</span>
             <span class="text-sm text-gray-600"><%= c.allowedGrades ? String(c.allowedGrades).split(',').map(function(g) { return g + '级'; }).join('、') : '不限' %></span>
@@ -188,7 +189,6 @@
               <%- include('_components/form-field', { label: '上课时间', name: 'courseTime', value: c.courseTime || '' }) %>
               <%- include('_components/form-field', { label: '上课地点', name: 'location', value: c.location || '' }) %>
               <%- include('_components/form-field', { label: '总名额', name: 'totalSeats', type: 'number', value: String(c.totalSeats), required: true }) %>
-              <%- include('_components/form-field', { label: '默认开放时间', name: 'openTime', type: 'date', value: c.openTime ? c.openTime.substring(0, 10) : '' }) %>
               <%- include('_components/form-field', { label: '允许年级', name: 'allowedGrades', value: c.allowedGrades || '', placeholder: '例如 2024,2026；留空表示不限' }) %>
               <%- include('_components/form-field', { label: '标签', name: 'tag', value: c.tag || '', placeholder: '例如 热门；留空表示不显示' }) %>
             </div>
@@ -202,7 +202,26 @@
       </div>
     <% }); %>
   </div>
+  <div id="course-filter-empty" class="hidden bg-white rounded-xl shadow-sm border border-gray-100 px-6 py-4 text-sm text-gray-500">没有匹配的课程</div>
 </div>
+
+<script>
+(function() {
+  var input = document.getElementById('course-filter-input');
+  var emptyHint = document.getElementById('course-filter-empty');
+  if (!input) return;
+  input.addEventListener('input', function() {
+    var q = input.value.trim().toLowerCase();
+    var visible = 0;
+    document.querySelectorAll('[data-course-filter]').forEach(function(card) {
+      var hit = !q || card.getAttribute('data-course-filter').indexOf(q) !== -1;
+      card.classList.toggle('hidden', !hit);
+      if (hit) visible++;
+    });
+    emptyHint.classList.toggle('hidden', visible > 0);
+  });
+})();
+</script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

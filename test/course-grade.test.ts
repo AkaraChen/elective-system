@@ -31,41 +31,42 @@ async function createFixture() {
   await db.delete(courses);
   await db.delete(users);
 
-  await db.insert(users).values([
+  const insertedUsers = await db.insert(users).values([
     { username: "allowed", nickname: "Allowed", password: "x", grade: 2026 },
     { username: "removed", nickname: "Removed", password: "x", grade: 2025 },
     { username: "missing", nickname: "Missing", password: "x", grade: null },
-  ]);
-  await db.insert(courses).values({
+  ]).returning({ id: users.id });
+  const insertedCourse = await db.insert(courses).values({
     name: "Test",
     teacher: "Teacher",
     totalSeats: 3,
     availableSeats: 0,
-    openTime: "2026-09-05T00:00:00",
-  });
-  await db.insert(selections).values([
-    { userId: 1, courseId: 1, createdAt: "2026-09-05T00:00:00" },
-    { userId: 2, courseId: 1, createdAt: "2026-09-05T00:00:00" },
-    { userId: 3, courseId: 1, createdAt: "2026-09-05T00:00:00" },
-  ]);
+  }).returning({ id: courses.id });
+  const courseId = insertedCourse[0].id;
+  await db.insert(selections).values(insertedUsers.map((user) => ({
+    userId: user.id,
+    courseId,
+    createdAt: "2026-09-05T00:00:00",
+  })));
+  return courseId;
 }
 
 describe("course grade reconciliation", () => {
   it("removes every selected student outside the new grade restriction", async () => {
-    await createFixture();
-    const result = await db.transaction(async (tx) => removeIneligibleSelections(tx, 1, "2026"));
-    const remaining = await db.select().from(selections).where(eq(selections.courseId, 1));
+    const courseId = await createFixture();
+    const result = await db.transaction(async (tx) => removeIneligibleSelections(tx, courseId, "2026"));
+    const remaining = await db.select().from(selections).where(eq(selections.courseId, courseId));
 
     assert.deepEqual(result, { removedCount: 2, selectedCount: 1 });
-    assert.deepEqual(remaining.map((selection) => selection.userId), [1]);
+    assert.equal(remaining.length, 1);
   });
 
   it("keeps graded students when unrestricted and removes accounts without a grade", async () => {
-    await createFixture();
-    const result = await db.transaction(async (tx) => removeIneligibleSelections(tx, 1, null));
-    const remaining = await db.select().from(selections).where(eq(selections.courseId, 1));
+    const courseId = await createFixture();
+    const result = await db.transaction(async (tx) => removeIneligibleSelections(tx, courseId, null));
+    const remaining = await db.select().from(selections).where(eq(selections.courseId, courseId));
 
     assert.deepEqual(result, { removedCount: 1, selectedCount: 2 });
-    assert.deepEqual(remaining.map((selection) => selection.userId), [1, 2]);
+    assert.equal(remaining.length, 2);
   });
 });

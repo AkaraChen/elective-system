@@ -8,7 +8,7 @@ import { parseRouteId } from "../utils/parse-id";
 import { isGradeAllowed, studentGrade } from "../utils/grade";
 import { effectiveOpenTime, resolveCourseState } from "../utils/course-state";
 import { readConfig, readEndTime, readStartTime } from "../utils/app-config";
-import { readMaxSelections, readOpenTimeForUser } from "../services/selection-policy";
+import { readMaxSelections, readBatchOpenTimeForUser } from "../services/selection-policy";
 import { addSelectionJob, getJob } from "../lib/queue";
 
 const router = Router();
@@ -37,12 +37,12 @@ router.get("/courses", requireAuth, async (req: Request, res: Response, next) =>
     const courseList = [];
     for (const c of allCourses) {
       if (!isGradeAllowed(grade, c.allowedGrades)) continue;
-      const courseOpen = await readOpenTimeForUser(db, userId, c.id);
-      const opentime = effectiveOpenTime(courseOpen, startTime);
+      const batchOpen = await readBatchOpenTimeForUser(db, userId, c.id);
+      const opentime = effectiveOpenTime(batchOpen, startTime);
       const isSelected = selectedIds.has(c.id);
       const state = resolveCourseState({
         now,
-        openTime: courseOpen,
+        batchOpenTime: batchOpen,
         startTime,
         endTime,
         selected: isSelected,
@@ -82,10 +82,10 @@ router.post("/api/courses/:id/select", requireAuth, async (req: Request, res: Re
       return res.status(400).send("当前年级不可选择该课程");
     }
 
-    const opentime = await readOpenTimeForUser(db, userId, courseId);
+    const batchOpen = await readBatchOpenTimeForUser(db, userId, courseId);
     const startTime = await readStartTime(db);
     const endTime = await readEndTime(db);
-    const effectiveOpen = effectiveOpenTime(opentime, startTime);
+    const effectiveOpen = effectiveOpenTime(batchOpen, startTime);
 
     if (now < effectiveOpen) return res.status(400).send("尚未到开放时间");
     if (now >= asEndInstant(endTime)) return res.status(400).send("选课已截止");
@@ -133,12 +133,12 @@ router.get("/api/courses/:id/select-status", requireAuth, async (req: Request, r
     const state = await job.getState();
 
     if (state === "completed") {
-      const courseOpen = await readOpenTimeForUser(db, userId, courseId);
+      const batchOpen = await readBatchOpenTimeForUser(db, userId, courseId);
       const startTime = await readStartTime(db);
       const endTimeStr = await readEndTime(db);
       const c = {
         ...course,
-        opentime: effectiveOpenTime(courseOpen, startTime),
+        opentime: effectiveOpenTime(batchOpen, startTime),
         state: "selected" as const,
         endtime: endTimeStr,
       };
@@ -146,7 +146,7 @@ router.get("/api/courses/:id/select-status", requireAuth, async (req: Request, r
     }
 
     if (state === "failed") {
-      const courseOpen = await readOpenTimeForUser(db, userId, courseId);
+      const batchOpen = await readBatchOpenTimeForUser(db, userId, courseId);
       const startTime = await readStartTime(db);
       const endTime = await readEndTime(db);
       const selectedRows = await db
@@ -155,10 +155,10 @@ router.get("/api/courses/:id/select-status", requireAuth, async (req: Request, r
         .where(and(eq(selections.userId, userId), eq(selections.courseId, courseId)));
       const c = {
         ...course,
-        opentime: effectiveOpenTime(courseOpen, startTime),
+        opentime: effectiveOpenTime(batchOpen, startTime),
         state: resolveCourseState({
           now: nowLocal(),
-          openTime: courseOpen,
+          batchOpenTime: batchOpen,
           startTime,
           endTime,
           selected: selectedRows.length > 0,
@@ -208,13 +208,13 @@ router.post("/api/courses/:id/drop", requireAuth, async (req: Request, res: Resp
 
     const courseRows = await db.select().from(courses).where(eq(courses.id, courseId));
     const course = courseRows[0]!;
-    const courseOpen = await readOpenTimeForUser(db, userId, courseId);
+    const batchOpen = await readBatchOpenTimeForUser(db, userId, courseId);
     const startTime = await readStartTime(db);
     const endTime = await readEndTime(db);
-    const opentime = effectiveOpenTime(courseOpen, startTime);
+    const opentime = effectiveOpenTime(batchOpen, startTime);
     const state = resolveCourseState({
       now,
-      openTime: courseOpen,
+      batchOpenTime: batchOpen,
       startTime,
       endTime,
       selected: false,

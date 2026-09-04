@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { eq, and, inArray, ne } from "drizzle-orm";
+import { eq, and, asc, inArray, ne } from "drizzle-orm";
 import { db } from "../db/index";
 import { courses, users, selections } from "../db/schema";
 import { requireAdmin } from "../middleware/auth";
@@ -38,25 +38,32 @@ router.get("/api/admin/class/courses/search", requireAdmin, async (req: Request,
       return res.send(`<div class="px-6 py-4 text-sm text-gray-500">请输入课程名</div>`);
     }
 
-    const courseRows = await db
+    const matched = await db
       .select()
       .from(courses)
-      .where(eq(courses.name, name.trim()));
+      .where(eq(courses.name, name.trim()))
+      .orderBy(asc(courses.id));
 
-    if (courseRows.length === 0) {
+    if (matched.length === 0) {
       return res.send(
         `<div class="px-6 py-4 text-sm text-red-500">未找到课程 "${escapeHtml(name.trim())}"</div>`
       );
     }
-    const course = courseRows[0];
 
-    const enrolledStudents = await db
-      .select({ id: users.id, username: users.username, nickname: users.nickname, grade: users.grade, className: users.className, phone: users.phone })
-      .from(selections)
-      .innerJoin(users, eq(selections.userId, users.id))
-      .where(eq(selections.courseId, course.id));
+    const html = (
+      await Promise.all(
+        matched.map(async (course) => {
+          const enrolledStudents = await db
+            .select({ id: users.id, username: users.username, nickname: users.nickname, grade: users.grade, className: users.className, phone: users.phone })
+            .from(selections)
+            .innerJoin(users, eq(selections.userId, users.id))
+            .where(eq(selections.courseId, course.id));
+          return renderResult(course, enrolledStudents, res.locals.csrfToken);
+        })
+      )
+    ).join("");
 
-    res.send(renderResult(course, enrolledStudents, res.locals.csrfToken));
+    res.send(html);
   } catch (err) {
     next(err);
   }

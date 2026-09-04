@@ -2,7 +2,7 @@ import { Worker, UnrecoverableError } from "bullmq";
 import { eq, and, count } from "drizzle-orm";
 import { db } from "../db/index";
 import { courses, selections } from "../db/schema";
-import { readMaxSelections, readOpenTimeForUser } from "../services/selection-policy";
+import { readMaxSelections, readBatchOpenTimeForUser } from "../services/selection-policy";
 import { readStartTime, readEndTime } from "../utils/app-config";
 import { effectiveOpenTime } from "../utils/course-state";
 import { asEndInstant } from "../utils/time";
@@ -36,10 +36,10 @@ export const selectionWorker = new Worker<SelectionJobData>(
         throw new UnrecoverableError(`最多只能选 ${maxSelections} 门课`);
       }
 
-      const opentime = await readOpenTimeForUser(tx, userId, courseId);
+      const batchOpen = await readBatchOpenTimeForUser(tx, userId, courseId);
       const startTime = await readStartTime(tx);
       const endTime = await readEndTime(tx);
-      const effectiveOpen = effectiveOpenTime(opentime, startTime);
+      const effectiveOpen = effectiveOpenTime(batchOpen, startTime);
 
       if (now < effectiveOpen) {
         throw new UnrecoverableError("尚未到开放时间");

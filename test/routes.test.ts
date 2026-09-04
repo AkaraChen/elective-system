@@ -8,9 +8,6 @@ import Redis from "ioredis";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { eq } from "drizzle-orm";
 import * as schema from "../src/db/schema";
-import { seed } from "../src/db/seed";
-import { closeQueue } from "../src/lib/queue";
-import { selectionWorker } from "../src/workers/selection";
 
 process.env.NODE_ENV = "test";
 
@@ -23,6 +20,9 @@ let server: Server | undefined;
 let pool: Pool | undefined;
 let rawDb: ReturnType<typeof drizzle> | undefined;
 let redis: Redis | undefined;
+// Imported dynamically in before() so src/db picks up DATABASE_URL/REDIS_URL first.
+let closeQueue: typeof import("../src/lib/queue").closeQueue;
+let selectionWorker: import("bullmq").Worker;
 
 before(async () => {
   process.env.DATABASE_URL = databaseUrl;
@@ -41,7 +41,12 @@ before(async () => {
   redis = new Redis(redisUrl);
   await redis.flushdb();
 
-  await seed(rawDb);
+  [{ closeQueue }, { selectionWorker }] = await Promise.all([
+    import("../src/lib/queue"),
+    import("../src/workers/selection"),
+  ]);
+
+  await seedFixture();
 
   const [{ createApp }] = await Promise.all([
     import("../src/app"),
@@ -62,12 +67,40 @@ after(async () => {
       server!.close((error) => error ? reject(error) : resolve());
     });
   }
-  await selectionWorker.close();
-  await closeQueue();
+  if (selectionWorker) await selectionWorker.close();
+  if (closeQueue) await closeQueue();
+  const { redis: appRedis, sessionRedis } = await import("../src/lib/redis");
+  appRedis.disconnect();
+  await sessionRedis.quit().catch(() => {});
   await redis?.quit();
   await pool?.end();
   process.chdir(originalDirectory);
 });
+
+async function seedFixture() {
+  const password = bcryptjs.hashSync("123", 4);
+  await rawDb!.insert(schema.users).values([
+    { username: "admin", nickname: "Admin Nickname", password, isAdmin: 1, grade: null, phone: null },
+    { username: "student", nickname: "Student Nickname", password, isAdmin: 0, grade: 2026, phone: "13800138000" },
+  ]);
+  await rawDb!.insert(schema.courses).values([
+    { name: "Allowed course", teacher: "Teacher", totalSeats: 10, availableSeats: 10, allowedGrades: "2026" },
+    { name: "Restricted course", teacher: "Teacher", totalSeats: 10, availableSeats: 10, allowedGrades: "2025" },
+  ]);
+  await rawDb!.insert(schema.access).values([
+    { courseId: 1, openTime: "2099-01-01T00:00:00" },
+    { courseId: 1, openTime: "2090-01-01T00:00:00" },
+  ]);
+  await rawDb!.insert(schema.accessUsers).values([
+    { accessId: 1, userId: 2 },
+    { accessId: 2, userId: 2 },
+  ]);
+  await rawDb!.insert(schema.config).values([
+    { key: "start_time", value: "2000-01-01T00:00:00" },
+    { key: "end_time", value: "2999-12-31T23:59:59" },
+    { key: "max_selections", value: "3" },
+  ]);
+}
 
 describe("grade and selection routes", () => {
   it("returns only courses allowed for the logged-in student's grade", async () => {
@@ -82,13 +115,50 @@ describe("grade and selection routes", () => {
     assert.match(html, /id="course-selection-state" data-max-selections="3"/);
   });
 
-  it("uses the earliest matching priority batch", async () => {
-    const student = await login("student", "123");
-    const response = await fetch(`${baseUrl}/courses`, { headers: { cookie: student.cookie } });
-    const html = await response.text();
+  it("lets a priority batch open earlier than the global start", async () => {
+    await pool!.query("UPDATE config SET value = $1 WHERE key = 'start_time'", ["2095-01-01T00:00:00"]);
+    try {
+      const student = await login("student", "123");
+      const response = await fetch(`${baseUrl}/courses`, { headers: { cookie: student.cookie } });
+      const html = await response.text();
 
-    assert.match(html, /data-opentime="2090-01-01T00:00:00"/);
-    assert.doesNotMatch(html, /data-opentime="2099-01-01T00:00:00"/);
+      assert.match(html, /data-opentime="2090-01-01T00:00:00"/);
+      assert.doesNotMatch(html, /data-opentime="2099-01-01T00:00:00"/);
+    } finally {
+      await pool!.query("UPDATE config SET value = $1 WHERE key = 'start_time'", ["2000-01-01T00:00:00"]);
+    }
+  });
+
+  it("never opens later than the global start, even with a later batch", async () => {
+    await pool!.query("UPDATE config SET value = $1 WHERE key = 'start_time'", ["2085-01-01T00:00:00"]);
+    try {
+      const student = await login("student", "123");
+      const html = await (await fetch(`${baseUrl}/courses`, { headers: { cookie: student.cookie } })).text();
+
+      assert.match(html, /data-opentime="2085-01-01T00:00:00"/);
+    } finally {
+      await pool!.query("UPDATE config SET value = $1 WHERE key = 'start_time'", ["2000-01-01T00:00:00"]);
+    }
+  });
+
+  it("rejects selecting before the effective open time", async () => {
+    await pool!.query("UPDATE config SET value = $1 WHERE key = 'start_time'", ["2095-01-01T00:00:00"]);
+    try {
+      const student = await login("student", "123");
+      const response = await fetch(`${baseUrl}/api/courses/1/select`, {
+        method: "POST",
+        headers: {
+          cookie: student.cookie,
+          "content-type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({ _csrf: student.csrf }),
+      });
+
+      assert.equal(response.status, 400);
+      assert.match(await response.text(), /尚未到开放时间/);
+    } finally {
+      await pool!.query("UPDATE config SET value = $1 WHERE key = 'start_time'", ["2000-01-01T00:00:00"]);
+    }
   });
 
   it("rejects an administrator assigning an ineligible student", async () => {
@@ -109,6 +179,38 @@ describe("grade and selection routes", () => {
     assert.match(await response.text(), /不允许年级/);
     const countResult = await pool!.query("SELECT count(*) FROM selections WHERE user_id = 2 AND course_id = 2");
     assert.equal(Number(countResult.rows[0].count), 0);
+  });
+
+  it("returns every course sharing the searched name in the class search", async () => {
+    await rawDb!.insert(schema.courses).values({
+      name: "Allowed course",
+      teacher: "Other Teacher",
+      totalSeats: 5,
+      availableSeats: 5,
+      allowedGrades: "2026",
+    });
+
+    const admin = await login("admin", "123");
+    const response = await fetch(
+      `${baseUrl}/api/admin/class/courses/search?name=${encodeURIComponent("Allowed course")}`,
+      { headers: { cookie: admin.cookie } },
+    );
+    const html = await response.text();
+
+    assert.equal(response.status, 200);
+    assert.match(html, /id="class-result-1"/);
+    assert.match(html, /id="class-result-3"/);
+    assert.match(html, /Other Teacher/);
+  });
+
+  it("reports when no course matches the class search", async () => {
+    const admin = await login("admin", "123");
+    const response = await fetch(
+      `${baseUrl}/api/admin/class/courses/search?name=${encodeURIComponent("不存在的课")}`,
+      { headers: { cookie: admin.cookie } },
+    );
+
+    assert.match(await response.text(), /未找到课程/);
   });
 
   it("renders second-precision selection window inputs without a minimum date", async () => {
@@ -192,7 +294,7 @@ describe("grade and selection routes", () => {
   });
 
   it("removes selections that become ineligible after a student grade change", async () => {
-    await pool!.query("INSERT INTO selections (user_id, course_id, created_at) VALUES ($1, $2, $3)", [2, 1, "2026-08-27T00:00:00"]);
+    await pool!.query("INSERT INTO selections (user_id, course_id, created_at) VALUES ($1, $2, $3) ON CONFLICT (user_id, course_id) DO UPDATE SET created_at = EXCLUDED.created_at", [2, 1, "2026-08-27T00:00:00"]);
     await pool!.query("UPDATE courses SET available_seats = 9 WHERE id = 1");
 
     const admin = await login("admin", "123");
@@ -575,7 +677,7 @@ describe("grade and selection routes", () => {
     const adminPage = await fetch(`${baseUrl}/admin/courses`, { headers: { cookie: admin.cookie } });
     const adminHtml = await adminPage.text();
     assert.match(adminHtml, /name="key" value="course_instructions"/);
-    assert.match(adminHtml, /保存课程说明/);
+    assert.match(adminHtml, /保存课程须知/);
 
     try {
       const saved = await fetch(`${baseUrl}/api/admin/config`, {
