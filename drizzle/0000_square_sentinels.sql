@@ -24,9 +24,8 @@ CREATE TABLE "courses" (
 	"location" text,
 	"total_seats" integer NOT NULL,
 	"available_seats" integer NOT NULL,
-	"open_time" text NOT NULL,
-	"allowed_grades" text
-	,"tag" text
+	"allowed_grades" text,
+	"tag" text
 );
 --> statement-breakpoint
 CREATE TABLE "selections" (

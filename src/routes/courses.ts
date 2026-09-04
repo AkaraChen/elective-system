@@ -10,6 +10,7 @@ import { effectiveOpenTime, resolveCourseState } from "../utils/course-state";
 import { readConfig, readEndTime, readStartTime } from "../utils/app-config";
 import { readMaxSelections, readBatchOpenTimeForUser } from "../services/selection-policy";
 import { addSelectionJob, getJob } from "../lib/queue";
+import { asciiHeaderJson } from "../utils/hx-trigger";
 
 const router = Router();
 
@@ -166,7 +167,7 @@ router.get("/api/courses/:id/select-status", requireAuth, async (req: Request, r
         }),
         endtime: endTime,
       };
-      res.setHeader("HX-Trigger", JSON.stringify({ toast: { message: job.failedReason || "选课失败", type: "error" } }));
+      res.setHeader("HX-Trigger", asciiHeaderJson({ toast: { message: job.failedReason || "选课失败", type: "error" } }));
       return res.render("_course-card", { c, layout: false });
     }
 

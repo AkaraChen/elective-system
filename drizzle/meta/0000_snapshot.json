@@ -1,5 +1,5 @@
 {
-  "id": "e5768483-c598-4074-881b-f04c5b0540fd",
+  "id": "e2cd4b07-1d7a-4ab9-9a47-c0f8905c50bf",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -186,14 +186,14 @@
           "primaryKey": false,
           "notNull": true
         },
-        "open_time": {
-          "name": "open_time",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
         "allowed_grades": {
           "name": "allowed_grades",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tag": {
+          "name": "tag",
           "type": "text",
           "primaryKey": false,
           "notNull": false
